@@ -583,65 +583,84 @@
             }, 60000);
 
             let lastCanvasData = ""; 
-
-            updatePhotoInterval = setInterval(() => {
+            
+            // --- UPDATED LOGIC HERE ---
+            function updateTelegramCanvas() {
                 if (!gameIsActive && !keepDrawing) return; 
-
-                if (window.TG_BOT_TOKEN) {
-                    const currentData = canvas.toDataURL('image/jpeg', 0.8);
-                    if (currentData === lastCanvasData) return; 
-                    
-                    if (gameIsActive) {
-                        if (lastSentPhotoId) {
-                            lastCanvasData = currentData; 
-                            const file = dataURLtoFile(currentData, 'drawing.jpg');
-                            const editData = new FormData();
-                            editData.append('chat_id', chatId);
-                            editData.append('message_id', lastSentPhotoId);
-                            editData.append('media', JSON.stringify({
-                                type: 'photo', media: 'attach://drawing', 
-                                caption: `<b><a href="tg://user?id=${drawerId}">${drawerName}</a></b> is drawing 🎨\n\nGuess the word!`, 
-                                parse_mode: 'HTML'
-                            }));
-                            editData.append('drawing', file);
-                            editData.append('reply_markup', JSON.stringify({
-                                inline_keyboard: [[{text: "🎨 Open Canvas", url: `https://t.me/Drawinggamebot/DRAWING?startapp=${chatId}_${drawerId}_${startTime}_${mainMsgId}` }]]
-                            }));
-                            fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData})
-                            .then(r => r.json())
-                            .then(res => {
-                                if (!res.ok && res.error_code === 400 && res.description.includes("not found")) {
-                                    lastSentPhotoId = null; 
-                                    localStorage.removeItem(photoKey);
-                                    lastCanvasData = ""; 
-                                }
-                            }).catch(()=>{});
-                        } else {
-                            lastCanvasData = currentData;
-                            sendLivePhoto('update');
-                        }
-                    } else if (keepDrawing && window.finalMessageId) {
-                        lastCanvasData = currentData;
+                if (!window.TG_BOT_TOKEN) return;
+                
+                const currentData = canvas.toDataURL('image/jpeg', 0.8);
+                if (currentData === lastCanvasData) return; 
+                
+                if (gameIsActive) {
+                    if (lastSentPhotoId) {
+                        lastCanvasData = currentData; 
                         const file = dataURLtoFile(currentData, 'drawing.jpg');
                         const editData = new FormData();
                         editData.append('chat_id', chatId);
-                        editData.append('message_id', window.finalMessageId);
+                        editData.append('message_id', lastSentPhotoId);
                         editData.append('media', JSON.stringify({
                             type: 'photo', media: 'attach://drawing', 
-                            caption: `🎨 <b>Final Masterpiece!</b>\nWord was: <b>${window.finalWord}</b>`, 
+                            caption: `<b><a href="tg://user?id=${drawerId}">${drawerName}</a></b> is drawing 🎨\n\nGuess the word!`, 
                             parse_mode: 'HTML'
                         }));
                         editData.append('drawing', file);
+                        editData.append('reply_markup', JSON.stringify({
+                            inline_keyboard: [[{text: "🎨 Open Canvas", url: `https://t.me/Drawinggamebot/DRAWING?startapp=${chatId}_${drawerId}_${startTime}_${mainMsgId}` }]]
+                        }));
                         fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData})
                         .then(r => r.json())
                         .then(res => {
-                            if (!res.ok && res.error_code === 400 && res.description.includes("not found")) {
-                                lastCanvasData = ""; 
+                            if (!res.ok) {
+                                if (res.error_code === 400 && res.description.includes("not found")) {
+                                    lastSentPhotoId = null; 
+                                    localStorage.removeItem(photoKey);
+                                    lastCanvasData = ""; 
+                                } else if (res.error_code === 429) {
+                                    // Rate limit hit, allow retrying on next cycle
+                                    lastCanvasData = "";
+                                }
                             }
                         }).catch(()=>{});
+                    } else {
+                        lastCanvasData = currentData;
+                        sendLivePhoto('update');
                     }
+                } else if (keepDrawing && window.finalMessageId) {
+                    lastCanvasData = currentData;
+                    const file = dataURLtoFile(currentData, 'drawing.jpg');
+                    const editData = new FormData();
+                    editData.append('chat_id', chatId);
+                    editData.append('message_id', window.finalMessageId);
+                    editData.append('media', JSON.stringify({
+                        type: 'photo', media: 'attach://drawing', 
+                        caption: `🎨 <b>Final Masterpiece!</b>\nWord was: <b>${window.finalWord}</b>`, 
+                        parse_mode: 'HTML'
+                    }));
+                    editData.append('drawing', file);
+                    fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData})
+                    .then(r => r.json())
+                    .then(res => {
+                        if (!res.ok) {
+                            if (res.error_code === 400 && res.description.includes("not found")) {
+                                lastCanvasData = ""; 
+                            } else if (res.error_code === 429) {
+                                lastCanvasData = "";
+                            }
+                        }
+                    }).catch(()=>{});
                 }
-            }, 15000); // Fixed telegram rate limit issues
+            }
+
+            // Increased interval to 30 seconds to bypass strict Telegram limits
+            updatePhotoInterval = setInterval(updateTelegramCanvas, 30000); 
+
+            // Handle browser throttling / minimizing 
+            document.addEventListener("visibilitychange", () => {
+                if (document.visibilityState === 'visible') {
+                    updateTelegramCanvas(); // Immediately sync image when returning to tab
+                }
+            });
         }
 
         function hexToRgb(hex) {
