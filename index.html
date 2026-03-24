@@ -157,7 +157,6 @@
 
     <script>
         // ----------------------------------------------------
-        // YOUR UPDATED BOT TOKEN
         window.TG_BOT_TOKEN = "8257769100:AAFai0nP5ctSuFyo9vYUwtoCHcm7W2KM5fU"; 
         // ----------------------------------------------------
         
@@ -386,6 +385,7 @@
         document.getElementById('closeCanvasBtn').onclick = () => {
             if (!checkSpam('close_canvas_btn', 3000)) return; 
             stopAllIntervals();
+            if (evtSource) evtSource.close();
 
             if (window.TG_BOT_TOKEN && window.finalMessageId) {
                 const file = dataURLtoFile(canvas.toDataURL('image/jpeg', 0.8), 'drawing.jpg');
@@ -419,6 +419,7 @@
                     gameIsActive = false;
                     keepDrawing = false;
                     stopAllIntervals();
+                    evtSource.close();
                     document.getElementById('toolbar').style.display = 'none';
                     document.getElementById('top-bar').style.display = 'none';
                     const overlay = document.getElementById('viewer-overlay');
@@ -454,12 +455,10 @@
                         if (window.TG_BOT_TOKEN) {
                             clearInterval(livePhotoInterval);
                             
-                            // Delete the live message (Catching errors so it doesn't block execution)
                             if (lastSentPhotoId) {
                                 fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/deleteMessage?chat_id=${chatId}&message_id=${lastSentPhotoId}`).catch(()=>{});
                             }
                             
-                            // Delay exactly 500ms to avoid Telegram rate limits before sending Final Masterpiece
                             setTimeout(() => {
                                 const file = dataURLtoFile(canvas.toDataURL('image/jpeg', 0.9), 'final.jpg');
                                 const sendData = new FormData();
@@ -503,6 +502,7 @@
                     gameIsActive = false;
                     keepDrawing = false;
                     stopAllIntervals();
+                    evtSource.close();
                     document.getElementById('toolbar').style.display = 'none';
                     document.getElementById('top-bar').style.display = 'none';
                     const overlay = document.getElementById('viewer-overlay');
@@ -585,7 +585,7 @@
             let lastCanvasData = ""; 
 
             updatePhotoInterval = setInterval(() => {
-                if (!gameIsActive && !keepDrawing) return; // Strict block against ghost intervals
+                if (!gameIsActive && !keepDrawing) return; 
 
                 if (window.TG_BOT_TOKEN) {
                     const currentData = canvas.toDataURL('image/jpeg', 0.8);
@@ -641,7 +641,7 @@
                         }).catch(()=>{});
                     }
                 }
-            }, 5000);
+            }, 15000); // Fixed telegram rate limit issues
         }
 
         function hexToRgb(hex) {
