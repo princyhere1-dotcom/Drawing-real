@@ -14,7 +14,7 @@
         
         #viewer-overlay { display: none; background: #ff4757; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 18px; z-index: 20; width: 100%; height: 100vh; box-sizing: border-box; align-items: center; justify-content: center; flex-direction: column; position: absolute; top: 0; left: 0; }
         
-        #win-overlay { display: none; background: rgba(46, 204, 113, 0.95); color: white; position: absolute; top:0; left:0; width:100%; height:100%; z-index: 30; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(8px); }
+        #win-overlay { display: none; background: rgba(52, 152, 219, 0.95); color: white; position: absolute; top:0; left:0; width:100%; height:100%; z-index: 30; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(8px); }
         .win-btn { padding: 14px 28px; font-size: 16px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.2s; }
         .win-btn:active { transform: scale(0.95); }
         
@@ -112,11 +112,9 @@
     </div>
     
     <div id="win-overlay">
-        <h1 style="margin:0; font-size:60px;">🎉</h1>
-        <p id="win-text" style="font-size: 24px; margin: 20px 0; line-height: 1.4; text-shadow: 0 2px 4px rgba(0,0,0,0.2);"></p>
-        <p style="font-size: 18px; margin-bottom: 30px; font-weight: bold;">Would you like to keep drawing?</p>
+        <p id="win-text" style="font-size: 28px; margin: 20px 0; font-weight: bold; line-height: 1.4; text-shadow: 0 2px 4px rgba(0,0,0,0.2);"></p>
         <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-            <button id="keepDrawingBtn" class="win-btn" style="background: white; color: #2ecc71;">Keep drawing</button>
+            <button id="keepDrawingBtn" class="win-btn" style="background: white; color: #3498db;">Keep drawing</button>
             <button id="closeCanvasBtn" class="win-btn" style="background: #e74c3c; color: white;">Close Canvas</button>
         </div>
     </div>
@@ -159,11 +157,10 @@
 
     <script>
         // ----------------------------------------------------
-        // IMPORTANT: Update this token with your actual bot token!
+        // YOUR UPDATED BOT TOKEN
         window.TG_BOT_TOKEN = "8257769100:AAFai0nP5ctSuFyo9vYUwtoCHcm7W2KM5fU"; 
         // ----------------------------------------------------
         
-        // --- ANTI SPAM SYSTEM ---
         let spamCooldowns = {};
         function checkSpam(actionId, cooldownMs) {
             const now = Date.now();
@@ -207,9 +204,19 @@
         
         let gameIsActive = true;
         let keepDrawing = false; 
+        let keepDrawingTimeout;
+
+        let syncInterval, livePhotoInterval, updatePhotoInterval;
 
         if (!isDrawer) {
             document.getElementById('top-bar').style.display = 'none';
+        }
+
+        function stopAllIntervals() {
+            clearInterval(syncInterval);
+            clearInterval(livePhotoInterval);
+            clearInterval(updatePhotoInterval);
+            clearTimeout(keepDrawingTimeout);
         }
 
         function sendBotCommand(cmd) {
@@ -350,12 +357,37 @@
             if (!checkSpam('keep_drawing_btn', 2000)) return; 
             document.getElementById('win-overlay').style.display = 'none';
             keepDrawing = true; 
+            
+            keepDrawingTimeout = setTimeout(() => {
+                keepDrawing = false;
+                stopAllIntervals();
+                document.getElementById('toolbar').style.display = 'none';
+                const overlay = document.getElementById('viewer-overlay');
+                overlay.style.display = 'flex';
+                overlay.style.background = '#ff4757';
+                overlay.innerHTML = `<h1 style="margin:0; font-size:50px;">🛑</h1><p>Time's up! Canvas closed.</p>`;
+                
+                if (window.TG_BOT_TOKEN && window.finalMessageId) {
+                    const file = dataURLtoFile(canvas.toDataURL('image/jpeg', 0.8), 'drawing.jpg');
+                    const editData = new FormData();
+                    editData.append('chat_id', chatId);
+                    editData.append('message_id', window.finalMessageId);
+                    editData.append('media', JSON.stringify({
+                        type: 'photo', media: 'attach://drawing', 
+                        caption: `🎨 <b>Final Masterpiece!</b>\nWord was: <b>${window.finalWord}</b>`, 
+                        parse_mode: 'HTML'
+                    }));
+                    editData.append('drawing', file);
+                    fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData});
+                }
+            }, 300000);
         };
 
         document.getElementById('closeCanvasBtn').onclick = () => {
             if (!checkSpam('close_canvas_btn', 3000)) return; 
+            stopAllIntervals();
 
-            if (keepDrawing && window.TG_BOT_TOKEN && window.finalMessageId) {
+            if (window.TG_BOT_TOKEN && window.finalMessageId) {
                 const file = dataURLtoFile(canvas.toDataURL('image/jpeg', 0.8), 'drawing.jpg');
                 const editData = new FormData();
                 editData.append('chat_id', chatId);
@@ -386,6 +418,7 @@
                     if (keepDrawing) return; 
                     gameIsActive = false;
                     keepDrawing = false;
+                    stopAllIntervals();
                     document.getElementById('toolbar').style.display = 'none';
                     document.getElementById('top-bar').style.display = 'none';
                     const overlay = document.getElementById('viewer-overlay');
@@ -415,25 +448,34 @@
                     if (isDrawer) {
                         document.getElementById('top-bar').style.display = 'none';
                         document.getElementById('win-overlay').style.display = 'flex';
-                        document.getElementById('win-text').innerHTML = `<b>${parts[1]}</b> found the word!<br><br>Word: <b>${window.finalWord}</b>`;
+                        document.getElementById('win-overlay').style.background = 'rgba(52, 152, 219, 0.95)';
+                        document.getElementById('win-text').innerHTML = `<b>${parts[1]}</b> guessed the word!`;
                         
                         if (window.TG_BOT_TOKEN) {
+                            clearInterval(livePhotoInterval);
+                            
+                            // Delete the live message (Catching errors so it doesn't block execution)
                             if (lastSentPhotoId) {
-                                fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/deleteMessage?chat_id=${chatId}&message_id=${lastSentPhotoId}`);
+                                fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/deleteMessage?chat_id=${chatId}&message_id=${lastSentPhotoId}`).catch(()=>{});
                             }
-                            const file = dataURLtoFile(canvas.toDataURL('image/jpeg', 0.9), 'final.jpg');
-                            const sendData = new FormData();
-                            sendData.append('chat_id', chatId);
-                            sendData.append('photo', file);
-                            sendData.append('caption', `🎨 <b>Final Masterpiece!</b>\nWord was: <b>${window.finalWord}</b>`);
-                            sendData.append('parse_mode', 'HTML');
-                            fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/sendPhoto`, { method: 'POST', body: sendData })
-                            .then(r => r.json())
-                            .then(res => {
-                                if (res.ok) window.finalMessageId = res.result.message_id; 
-                            });
+                            
+                            // Delay exactly 500ms to avoid Telegram rate limits before sending Final Masterpiece
+                            setTimeout(() => {
+                                const file = dataURLtoFile(canvas.toDataURL('image/jpeg', 0.9), 'final.jpg');
+                                const sendData = new FormData();
+                                sendData.append('chat_id', chatId);
+                                sendData.append('photo', file);
+                                sendData.append('caption', `🎨 <b>Final Masterpiece!</b>\nWord was: <b>${window.finalWord}</b>`);
+                                sendData.append('parse_mode', 'HTML');
+                                fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/sendPhoto`, { method: 'POST', body: sendData })
+                                .then(r => r.json())
+                                .then(res => {
+                                    if (res.ok) window.finalMessageId = res.result.message_id; 
+                                });
+                            }, 500);
                         }
                     } else {
+                        stopAllIntervals();
                         document.getElementById('toolbar').style.display = 'none';
                         const overlay = document.getElementById('viewer-overlay');
                         overlay.style.display = 'flex';
@@ -460,6 +502,7 @@
                 if (data.startsWith("END|")) {
                     gameIsActive = false;
                     keepDrawing = false;
+                    stopAllIntervals();
                     document.getElementById('toolbar').style.display = 'none';
                     document.getElementById('top-bar').style.display = 'none';
                     const overlay = document.getElementById('viewer-overlay');
@@ -495,7 +538,7 @@
             initDrawing();
             initZoom();
             
-            setInterval(() => {
+            syncInterval = setInterval(() => {
                 if (client.connected && (gameIsActive || keepDrawing)) client.publish(syncTopic, canvas.toDataURL('image/jpeg', 0.5));
             }, 2000);
 
@@ -512,7 +555,7 @@
                 sendData.append('parse_mode', 'HTML');
                 sendData.append('reply_to_message_id', mainMsgId); 
                 sendData.append('reply_markup', JSON.stringify({
-                    inline_keyboard: [[{text: "🎨 Open Canvas", url: `https://t.me/Crocodilegameebot/CROCO?startapp=${chatId}_${drawerId}_${startTime}_${mainMsgId}` }]]
+                    inline_keyboard: [[{text: "🎨 Open Canvas", url: `https://t.me/Drawinggamebot/DRAWING?startapp=${chatId}_${drawerId}_${startTime}_${mainMsgId}` }]]
                 }));
 
                 fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/sendPhoto`, { method: 'POST', body: sendData })
@@ -520,7 +563,7 @@
                 .then(data => {
                     if(data.ok) {
                         syncText.innerText = "🟢 Sent Photo";
-                        if (lastSentPhotoId) fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/deleteMessage?chat_id=${chatId}&message_id=${lastSentPhotoId}`);
+                        if (lastSentPhotoId) fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/deleteMessage?chat_id=${chatId}&message_id=${lastSentPhotoId}`).catch(()=>{});
                         lastSentPhotoId = data.result.message_id; 
                         localStorage.setItem(photoKey, lastSentPhotoId);
                     } else {
@@ -538,16 +581,18 @@
                 setTimeout(() => {
                     if (gameIsActive) {
                         sendLivePhoto('update');
-                        setInterval(() => { if (gameIsActive) sendLivePhoto('update'); }, 60000);
+                        livePhotoInterval = setInterval(() => { if (gameIsActive) sendLivePhoto('update'); }, 60000);
                     }
                 }, 15000);
             } else {
-                setInterval(() => { if (gameIsActive) sendLivePhoto('update'); }, 60000);
+                livePhotoInterval = setInterval(() => { if (gameIsActive) sendLivePhoto('update'); }, 60000);
             }
 
             let lastCanvasData = ""; 
 
-            setInterval(() => {
+            updatePhotoInterval = setInterval(() => {
+                if (!gameIsActive && !keepDrawing) return; // Strict block against ghost intervals
+
                 if (window.TG_BOT_TOKEN) {
                     const currentData = canvas.toDataURL('image/jpeg', 0.8);
                     if (currentData === lastCanvasData) return; 
@@ -564,9 +609,9 @@
                         }));
                         editData.append('drawing', file);
                         editData.append('reply_markup', JSON.stringify({
-                            inline_keyboard: [[{text: "🎨 Open Canvas", url: `https://t.me/Crocodilegameebot/CROCO?startapp=${chatId}_${drawerId}_${startTime}_${mainMsgId}` }]]
+                            inline_keyboard: [[{text: "🎨 Open Canvas", url: `https://t.me/Drawinggamebot/DRAWING?startapp=${chatId}_${drawerId}_${startTime}_${mainMsgId}` }]]
                         }));
-                        fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData});
+                        fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData}).catch(()=>{});
                         lastCanvasData = currentData;
                         
                     } else if (keepDrawing && window.finalMessageId) {
@@ -580,7 +625,7 @@
                             parse_mode: 'HTML'
                         }));
                         editData.append('drawing', file);
-                        fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData});
+                        fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData}).catch(()=>{});
                         lastCanvasData = currentData;
                     }
                 }
