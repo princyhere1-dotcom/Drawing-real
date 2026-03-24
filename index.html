@@ -160,7 +160,7 @@
     <script>
         // ----------------------------------------------------
         // IMPORTANT: Update this token with your actual bot token!
-        window.TG_BOT_TOKEN = "8257769100:AAE8y1jLScG_N35te5-GEmYdmehuqucp4y8"; 
+        window.TG_BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"; 
         // ----------------------------------------------------
         
         // --- ANTI SPAM SYSTEM ---
@@ -512,7 +512,7 @@
                 sendData.append('parse_mode', 'HTML');
                 sendData.append('reply_to_message_id', mainMsgId); 
                 sendData.append('reply_markup', JSON.stringify({
-                    inline_keyboard: [[{text: "🎨 Open Canvas", url: `https://t.me/Drawinggamebot/DRAWING?startapp=${chatId}_${drawerId}_${startTime}_${mainMsgId}` }]]
+                    inline_keyboard: [[{text: "🎨 Open Canvas", url: `https://t.me/Crocodilegameebot/CROCO?startapp=${chatId}_${drawerId}_${startTime}_${mainMsgId}` }]]
                 }));
 
                 fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/sendPhoto`, { method: 'POST', body: sendData })
@@ -564,7 +564,7 @@
                         }));
                         editData.append('drawing', file);
                         editData.append('reply_markup', JSON.stringify({
-                            inline_keyboard: [[{text: "🎨 Open Canvas", url: `https://t.me/Drawinggamebot/DRAWING?startapp=${chatId}_${drawerId}_${startTime}_${mainMsgId}` }]]
+                            inline_keyboard: [[{text: "🎨 Open Canvas", url: `https://t.me/Crocodilegameebot/CROCO?startapp=${chatId}_${drawerId}_${startTime}_${mainMsgId}` }]]
                         }));
                         fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData});
                         lastCanvasData = currentData;
