@@ -563,30 +563,24 @@
                 .then(data => {
                     if(data.ok) {
                         syncText.innerText = "🟢 Sent Photo";
-                        if (lastSentPhotoId) fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/deleteMessage?chat_id=${chatId}&message_id=${lastSentPhotoId}`).catch(()=>{});
+                        if (lastSentPhotoId && lastSentPhotoId !== data.result.message_id) {
+                            fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/deleteMessage?chat_id=${chatId}&message_id=${lastSentPhotoId}`).catch(()=>{});
+                        }
                         lastSentPhotoId = data.result.message_id; 
                         localStorage.setItem(photoKey, lastSentPhotoId);
                     } else {
                         if (data.description && data.description.includes("not found")) gameIsActive = false; 
                     }
-                });
+                }).catch(()=>{});
             }
 
-            const initialSentKey = `initSent_${chatId}_${startTime}`;
-            
-            if (!localStorage.getItem(initialSentKey)) {
+            if (!lastSentPhotoId) {
                 sendLivePhoto('initial');
-                localStorage.setItem(initialSentKey, "true");
-                
-                setTimeout(() => {
-                    if (gameIsActive) {
-                        sendLivePhoto('update');
-                        livePhotoInterval = setInterval(() => { if (gameIsActive) sendLivePhoto('update'); }, 60000);
-                    }
-                }, 15000);
-            } else {
-                livePhotoInterval = setInterval(() => { if (gameIsActive) sendLivePhoto('update'); }, 60000);
             }
+            
+            livePhotoInterval = setInterval(() => { 
+                if (gameIsActive && lastSentPhotoId) sendLivePhoto('update'); 
+            }, 60000);
 
             let lastCanvasData = ""; 
 
@@ -597,24 +591,37 @@
                     const currentData = canvas.toDataURL('image/jpeg', 0.8);
                     if (currentData === lastCanvasData) return; 
                     
-                    if (gameIsActive && lastSentPhotoId) {
-                        const file = dataURLtoFile(currentData, 'drawing.jpg');
-                        const editData = new FormData();
-                        editData.append('chat_id', chatId);
-                        editData.append('message_id', lastSentPhotoId);
-                        editData.append('media', JSON.stringify({
-                            type: 'photo', media: 'attach://drawing', 
-                            caption: `<b><a href="tg://user?id=${drawerId}">${drawerName}</a></b> is drawing 🎨\n\nGuess the word!`, 
-                            parse_mode: 'HTML'
-                        }));
-                        editData.append('drawing', file);
-                        editData.append('reply_markup', JSON.stringify({
-                            inline_keyboard: [[{text: "🎨 Open Canvas", url: `https://t.me/Drawinggamebot/DRAWING?startapp=${chatId}_${drawerId}_${startTime}_${mainMsgId}` }]]
-                        }));
-                        fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData}).catch(()=>{});
-                        lastCanvasData = currentData;
-                        
+                    if (gameIsActive) {
+                        if (lastSentPhotoId) {
+                            lastCanvasData = currentData; 
+                            const file = dataURLtoFile(currentData, 'drawing.jpg');
+                            const editData = new FormData();
+                            editData.append('chat_id', chatId);
+                            editData.append('message_id', lastSentPhotoId);
+                            editData.append('media', JSON.stringify({
+                                type: 'photo', media: 'attach://drawing', 
+                                caption: `<b><a href="tg://user?id=${drawerId}">${drawerName}</a></b> is drawing 🎨\n\nGuess the word!`, 
+                                parse_mode: 'HTML'
+                            }));
+                            editData.append('drawing', file);
+                            editData.append('reply_markup', JSON.stringify({
+                                inline_keyboard: [[{text: "🎨 Open Canvas", url: `https://t.me/Drawinggamebot/DRAWING?startapp=${chatId}_${drawerId}_${startTime}_${mainMsgId}` }]]
+                            }));
+                            fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData})
+                            .then(r => r.json())
+                            .then(res => {
+                                if (!res.ok && res.error_code === 400 && res.description.includes("not found")) {
+                                    lastSentPhotoId = null; 
+                                    localStorage.removeItem(photoKey);
+                                    lastCanvasData = ""; 
+                                }
+                            }).catch(()=>{});
+                        } else {
+                            lastCanvasData = currentData;
+                            sendLivePhoto('update');
+                        }
                     } else if (keepDrawing && window.finalMessageId) {
+                        lastCanvasData = currentData;
                         const file = dataURLtoFile(currentData, 'drawing.jpg');
                         const editData = new FormData();
                         editData.append('chat_id', chatId);
@@ -625,8 +632,13 @@
                             parse_mode: 'HTML'
                         }));
                         editData.append('drawing', file);
-                        fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData}).catch(()=>{});
-                        lastCanvasData = currentData;
+                        fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData})
+                        .then(r => r.json())
+                        .then(res => {
+                            if (!res.ok && res.error_code === 400 && res.description.includes("not found")) {
+                                lastCanvasData = ""; 
+                            }
+                        }).catch(()=>{});
                     }
                 }
             }, 5000);
@@ -725,12 +737,15 @@
         function initDrawing() {
             container.addEventListener('pointerdown', (e) => {
                 if (e.pointerType === 'touch' && !e.isPrimary) return;
-                if (isZooming || (e.touches && e.touches.length > 1) || (!gameIsActive && !keepDrawing)) return;
+                if (isZooming || (!gameIsActive && !keepDrawing)) return;
                 
                 const rect = canvas.getBoundingClientRect();
                 
                 startX = (e.clientX - rect.left) * (canvas.width / rect.width);
                 startY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+                tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+                tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height); 
                 
                 let tool = document.getElementById('toolSelect').value;
                 if (tool === 'fill') {
@@ -740,11 +755,10 @@
                 }
 
                 drawing = true;
-                tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-                tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height); 
             });
 
             container.addEventListener('pointermove', (e) => {
+                if (e.pointerType === 'touch' && !e.isPrimary) return;
                 if (!drawing || isZooming || (!gameIsActive && !keepDrawing)) return;
                 const rect = canvas.getBoundingClientRect();
                 
@@ -799,8 +813,9 @@
                 }
             });
 
-            container.addEventListener('pointerup', () => { 
-                if(drawing && (gameIsActive || keepDrawing)) { 
+            container.addEventListener('pointerup', (e) => { 
+                if (e.pointerType === 'touch' && !e.isPrimary) return;
+                if(drawing && !isZooming && (gameIsActive || keepDrawing)) { 
                     drawing = false; 
                     
                     if (['line', 'rect', 'circle'].includes(document.getElementById('toolSelect').value)) {
@@ -813,7 +828,9 @@
                     ctx.shadowBlur = 0;
                     ctx.globalAlpha = 1.0;
                     ctx.globalCompositeOperation = 'source-over';
-                } 
+                } else if (drawing) {
+                    drawing = false;
+                }
             });
         }
 
@@ -826,9 +843,13 @@
             let startMidY = 0;
 
             container.addEventListener('touchstart', e => {
-                if (e.touches.length === 2) {
+                if (e.touches.length >= 2) {
                     isZooming = true;
-                    drawing = false;
+                    if (drawing) {
+                        drawing = false;
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
+                    }
                     let t1 = e.touches[0], t2 = e.touches[1];
                     initialDistance = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
                     initialScale = scale;
