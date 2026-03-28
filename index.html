@@ -52,9 +52,9 @@
             font-size: 16px; cursor: pointer;
         }
 
-        /* The original top-bar mapped to the center title */
+        /* Center Title */
         #top-bar { 
-            text-align: center; cursor: pointer; user-select: none;
+            text-align: center; user-select: none;
             display: flex; flex-direction: column; align-items: center; gap: 4px;
         }
         #top-bar h1 {
@@ -67,7 +67,7 @@
             padding: 4px 10px; border-radius: 10px;
         }
         #current-word-display {
-            color: #a78bfa; /* Light purple for the word */
+            color: #a78bfa; 
         }
         
         #status-bar { position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: #fff; padding: 4px 12px; border-radius: 12px; text-align: center; font-size: 11px; z-index: 20; backdrop-filter: blur(4px); }
@@ -79,10 +79,12 @@
         }
 
         #canvas-container { 
-            width: 100%; aspect-ratio: 4/3; max-height: 55vh;
+            width: 100%; 
+            max-width: 800px; 
+            aspect-ratio: 1 / 1; /* FORCES 1:1 SQUARE */
+            margin: 0 auto;
             position: relative; 
             background-color: var(--canvas-bg);
-            /* Grid pattern from photo */
             background-image: 
                 linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px), 
                 linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
@@ -93,7 +95,11 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.2); 
         }
         
-        canvas { position: absolute; top: 0; left: 0; transform-origin: top left; touch-action: none; }
+        canvas { 
+            position: absolute; top: 0; left: 0; 
+            width: 100% !important; height: 100% !important; /* Locks to container sizing */
+            transform-origin: top left; touch-action: none; 
+        }
         
         /* Floating Canvas Buttons */
         .floating-btn {
@@ -251,13 +257,13 @@
     <header id="header-nav">
         <button class="icon-btn-dark"><i class="fas fa-arrow-left"></i></button>
         
-        <div id="top-bar" onclick="openWordDialog()">
+        <div id="top-bar">
             <h1>DRAW & GUESS</h1>
             <div class="word-badge">WORD: <span id="current-word-display">Loading...</span></div>
         </div>
 
         <div style="display: flex; gap: 8px;">
-            <button class="icon-btn-dark"><i class="fas fa-cog"></i></button>
+            <button class="icon-btn-dark" onclick="openWordDialog()"><i class="fas fa-cog"></i></button>
             <button class="icon-btn-dark"><i class="fas fa-ellipsis-v"></i></button>
         </div>
     </header>
@@ -295,7 +301,6 @@
     </div>
 
     <div id="app-body">
-        
         <div id="canvas-container">
             <button id="toggleCommentsBtn" class="floating-btn">
                 <i class="fas fa-eye"></i> Hide
@@ -311,7 +316,6 @@
                 <div id="comments-container"></div> 
             </div>
         </div>
-
     </div>
 
     <div id="toolbar">
@@ -376,7 +380,6 @@
 
 
     <script>
-        // Connect the visual tabs to your hidden toolSelect
         document.querySelectorAll('.tab-btn[data-tool]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -389,21 +392,18 @@
             });
         });
 
-        // Update visual text for brush size
         const sizeSlider = document.getElementById('brushSize');
         const sizeVal = document.getElementById('brushSizeVal');
         sizeSlider.addEventListener('input', (e) => {
             sizeVal.textContent = e.target.value + 'px';
         });
 
-        // Update visual text for opacity (Visual only, doesn't break JS)
         const opSlider = document.getElementById('visualOpacity');
         const opVal = document.getElementById('opacityVal');
         opSlider.addEventListener('input', (e) => {
             opVal.textContent = e.target.value + '%';
         });
 
-        // Toggle comments text
         const toggleBtn = document.getElementById('toggleCommentsBtn');
         toggleBtn.addEventListener('click', () => {
             if (toggleBtn.innerHTML.includes('Hide')) {
@@ -536,11 +536,12 @@
             if (tool === 'eraser') document.getElementById('toolSelect').value = 'solid';
         });
 
+        // --- UPDATED CANVAS SIZING TO FORCE 800x800 SQUARE ---
         const dpr = window.devicePixelRatio || 1;
-        canvas.width = window.innerWidth * dpr;
-        canvas.height = window.innerWidth * dpr;
-        canvas.style.width = window.innerWidth + 'px';
-        canvas.style.height = window.innerWidth + 'px';
+        canvas.width = 800 * dpr;
+        canvas.height = 800 * dpr;
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
         
         if (!isDrawer) {
             document.getElementById('toolbar').style.display = 'none';
@@ -1042,6 +1043,8 @@
                 let color = tool === 'eraser' ? 'white' : document.getElementById('colorPicker').value;
                 let size = document.getElementById('brushSize').value * dpr;
 
+                // --- NEW OPACITY LOGIC HERE ---
+                let baseAlpha = document.getElementById('visualOpacity').value / 100;
                 ctx.strokeStyle = color;
                 ctx.fillStyle = color;
                 ctx.lineWidth = size;
@@ -1049,15 +1052,15 @@
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
                 ctx.globalCompositeOperation = 'source-over';
-                ctx.globalAlpha = 1.0;
+                ctx.globalAlpha = baseAlpha;
                 ctx.shadowBlur = 0;
 
                 if (tool === 'velvet') {
-                    ctx.globalAlpha = 0.7;
+                    ctx.globalAlpha = baseAlpha * 0.7;
                     ctx.shadowBlur = 2;
                     ctx.shadowColor = color;
                 } else if (tool === 'wet') {
-                    ctx.globalAlpha = 0.15;
+                    ctx.globalAlpha = baseAlpha * 0.15;
                     ctx.shadowBlur = size * 0.8;
                     ctx.shadowColor = color;
                 }
@@ -1070,7 +1073,7 @@
                         let angle = Math.random() * 2 * Math.PI;
                         let px = currentX + rad * Math.cos(angle);
                         let py = currentY + rad * Math.sin(angle);
-                        ctx.globalAlpha = Math.random() * 0.6 + 0.2;
+                        ctx.globalAlpha = (Math.random() * 0.6 + 0.2) * baseAlpha;
                         ctx.fillRect(px, py, 1.5, 1.5);
                     }
                     startX = currentX; startY = currentY;
@@ -1099,7 +1102,8 @@
                     history = history.slice(0, historyStep + 1); 
                     saveState(); 
                     ctx.shadowBlur = 0;
-                    ctx.globalAlpha = 1.0;
+                    // --- RESET OPACITY WITH SLIDER VALUE ---
+                    ctx.globalAlpha = document.getElementById('visualOpacity').value / 100;
                     ctx.globalCompositeOperation = 'source-over';
                 } else if (drawing) {
                     drawing = false;
