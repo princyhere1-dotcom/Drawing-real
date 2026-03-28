@@ -6,43 +6,86 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        body { margin: 0; padding: 0; background: #1e1e24; display: flex; flex-direction: column; height: 100vh; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; touch-action: none; }
+        /* --- Modern UI CSS --- */
+        :root {
+            --nav-bg: #1f293a;
+            --text-color: #ffffff;
+            --btn-bg: rgba(255, 255, 255, 0.1);
+            --btn-hover: rgba(255, 255, 255, 0.2);
+            --accent-blue: #3b82f6;
+            --accent-hover: #2563eb;
+            --toolbar-bg: #ffffff;
+        }
+
+        body { margin: 0; padding: 0; background: #f1f3f4; display: flex; flex-direction: column; height: 100vh; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; touch-action: none; overflow: hidden; }
         
-        #top-bar { background: #111; color: #fff; padding: 12px; text-align: center; font-size: 18px; font-weight: bold; width: 100%; z-index: 20; display: flex; justify-content: center; align-items: center; cursor: pointer; user-select: none; }
-        #status-bar { background: #111; color: #fff; padding: 4px; text-align: center; font-size: 11px; width: 100%; z-index: 20; opacity: 0.7; }
+        /* Modern Top Bar */
+        #main-header {
+            background-color: var(--nav-bg);
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 24px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 50;
+        }
+
+        .nav-left { display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 600; }
+        .nav-left i { color: var(--accent-blue); font-size: 24px; }
+        .nav-right { display: flex; align-items: center; gap: 10px; }
+
+        /* The user's original top-bar integrated nicely */
+        #top-bar { 
+            background: rgba(0,0,0,0.3); color: #fff; padding: 8px 16px; border-radius: 8px; text-align: center; font-size: 16px; font-weight: bold; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.1); transition: 0.2s;
+        }
+        #top-bar:hover { background: rgba(0,0,0,0.5); }
         
-        #viewer-overlay { display: none; background: #ff4757; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 18px; z-index: 20; width: 100%; height: 100vh; box-sizing: border-box; align-items: center; justify-content: center; flex-direction: column; position: absolute; top: 0; left: 0; }
+        #status-bar { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: #fff; padding: 4px 12px; border-radius: 12px; text-align: center; font-size: 11px; z-index: 20; backdrop-filter: blur(4px); }
         
-        #win-overlay { display: none; background: rgba(52, 152, 219, 0.95); color: white; position: absolute; top:0; left:0; width:100%; height:100%; z-index: 30; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(8px); }
+        /* Photo UI Buttons */
+        .photo-btn {
+            background-color: var(--btn-bg); color: var(--text-color); border: 1px solid rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 8px; transition: background 0.2s; font-weight: 600;
+        }
+        .photo-btn:hover { background-color: var(--btn-hover); }
+        .photo-btn.primary { background-color: var(--accent-blue); border-color: var(--accent-blue); }
+        .photo-btn.primary:hover { background-color: var(--accent-hover); }
+
+        /* Overlays */
+        #viewer-overlay { display: none; background: #ff4757; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 18px; z-index: 100; width: 100%; height: 100vh; box-sizing: border-box; align-items: center; justify-content: center; flex-direction: column; position: absolute; top: 0; left: 0; }
+        #win-overlay { display: none; background: rgba(52, 152, 219, 0.95); color: white; position: absolute; top:0; left:0; width:100%; height:100%; z-index: 90; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(8px); }
         .win-btn { padding: 14px 28px; font-size: 16px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.2s; }
         .win-btn:active { transform: scale(0.95); }
         
-        #canvas-container { width: 100vw; height: 100vw; flex: none; position: relative; background: #ffffff; touch-action: none; box-shadow: 0 10px 30px rgba(0,0,0,0.5) inset; overflow: hidden; border-radius: 0 0 10px 10px; }
+        /* Canvas Area */
+        #app-body { display: flex; flex: 1; position: relative; justify-content: center; align-items: center; }
+        #canvas-container { width: 100vw; height: 100vw; max-width: 800px; max-height: 800px; position: relative; background: #ffffff; touch-action: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; border-radius: 16px; }
         canvas { position: absolute; top: 0; left: 0; transform-origin: top left; touch-action: none; }
         
+        /* Vertical Left Sidebar (Modernized #toolbar) */
         #toolbar { 
-            position: relative; margin: 15px auto;
-            background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(15px);
-            padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 12px; 
-            justify-content: center; align-items: center; 
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3); z-index: 10; 
-            border-radius: 24px; border: 1px solid rgba(255,255,255,0.4);
-            width: 92%; box-sizing: border-box; 
+            position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(15px);
+            padding: 20px 15px; display: flex; flex-direction: column; gap: 15px; 
+            align-items: stretch; box-shadow: 0 8px 32px rgba(0,0,0,0.15); z-index: 40; 
+            border-radius: 16px; border: 1px solid rgba(0,0,0,0.05); width: 160px; box-sizing: border-box; 
         }
         
         button, select, input[type="range"], input[type="text"] { 
-            padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); 
-            font-weight: 600; font-size: 14px; background: #fff; color: #333;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05); outline: none; transition: 0.2s;
+            padding: 10px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); 
+            font-weight: 600; font-size: 13px; background: #f8f9fa; color: #333;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02); outline: none; transition: 0.2s; width: 100%; box-sizing: border-box;
         }
-        button:active { background: #f0f0f0; transform: translateY(2px); }
+        button:active { background: #e2e8f0; transform: translateY(2px); }
+        select { cursor: pointer; }
         
-        #palette { display: flex; align-items: center; justify-content: center; border-right: 2px solid rgba(0,0,0,0.1); padding-right: 12px; }
+        #palette { display: flex; flex-direction: column; align-items: center; gap: 8px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 15px; }
         .color-wheel-wrapper {
-            position: relative; width: 42px; height: 42px; border-radius: 50%;
+            position: relative; width: 48px; height: 48px; border-radius: 50%;
             background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
-            box-shadow: 0 3px 10px rgba(0,0,0,0.2); cursor: pointer; border: 3px solid #fff;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.15); cursor: pointer; border: 3px solid #fff;
             transition: transform 0.2s;
         }
         .color-wheel-wrapper:active { transform: scale(0.9); }
@@ -50,25 +93,23 @@
             opacity: 0; width: 100%; height: 100%; position: absolute; top:0; left:0; cursor: pointer;
         }
 
-        #brushSize { width: 140px; height: 16px; accent-color: #333; cursor: pointer; }
-        #clearBtn { background: #ff4757; color: white; border: none; }
+        #brushSize { accent-color: var(--accent-blue); cursor: pointer; padding: 0; }
+        #clearBtn { background: #fee2e2; color: #ef4444; border-color: #fecaca; }
+        #clearBtn:hover { background: #fecaca; }
         
+        /* Comments & Dialogs */
         #comments-wrapper { position: absolute; top: 15px; right: 15px; width: 220px; z-index: 15; pointer-events: none; }
         #comments-container { display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
-        .comment {
-            background: rgba(0,0,0,0.75); color: #fff; padding: 8px 12px; border-radius: 12px;
-            font-size: 14px; word-wrap: break-word; animation: fadeIn 0.3s;
-            backdrop-filter: blur(4px); box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        }
+        .comment { background: rgba(0,0,0,0.75); color: #fff; padding: 8px 12px; border-radius: 12px; font-size: 14px; word-wrap: break-word; animation: fadeIn 0.3s; backdrop-filter: blur(4px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         .comment b { color: #feca57; }
         @keyframes fadeIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 
-        #dialog-overlay { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:90; backdrop-filter: blur(2px); }
-        #word-dialog { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:#2c3e50; padding:20px; border-radius:15px; z-index:100; color:white; width: 85%; max-width: 320px; box-sizing: border-box; font-family: sans-serif; box-shadow:0 10px 40px rgba(0,0,0,0.6); }
+        #dialog-overlay { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:110; backdrop-filter: blur(2px); }
+        #word-dialog { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:#2c3e50; padding:20px; border-radius:15px; z-index:120; color:white; width: 85%; max-width: 320px; box-sizing: border-box; font-family: sans-serif; box-shadow:0 10px 40px rgba(0,0,0,0.6); }
         .dialog-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
         .dialog-title { margin: 0; font-size: 18px; font-weight: bold; text-align: left; line-height: 1.4; }
         .dialog-title span { color: #f1c40f; font-size: 24px; display: block; margin-top: 5px; }
-        #closeDialogBtn { background: transparent; border: none; color: #aaa; font-size: 24px; font-weight: bold; padding: 0; margin-top: -5px; cursor: pointer; }
+        #closeDialogBtn { background: transparent; border: none; color: #aaa; font-size: 24px; font-weight: bold; padding: 0; margin-top: -5px; cursor: pointer; width: auto; box-shadow: none; }
         #closeDialogBtn:active { color: white; transform: scale(0.9); }
         
         #word-dialog button.action-btn { cursor: pointer; border: none; font-weight: bold; border-radius: 8px; padding: 12px 20px; width: 100%; margin-bottom: 10px; font-size: 16px; color: white; transition: 0.2s; text-align: center; }
@@ -79,12 +120,35 @@
         #word-input-container { display: none; }
         #customWordInput { width: 100%; padding: 12px; border-radius: 8px; border: none; box-sizing: border-box; margin-bottom: 15px; font-size: 16px; outline: none; text-align: center; color: #333; }
         #saveCustomWordBtn { background: #e67e22; margin-bottom: 0; }
+        
+        /* Mobile specific adjustments to ensure toolbar stays accessible */
+        @media (max-width: 768px) {
+            #toolbar {
+                position: fixed; bottom: 0; left: 0; top: auto; transform: none;
+                flex-direction: row; width: 100vw; border-radius: 16px 16px 0 0;
+                padding: 10px; overflow-x: auto; gap: 10px; height: 80px; align-items: center;
+            }
+            #palette { border-bottom: none; border-right: 1px solid rgba(0,0,0,0.1); padding-bottom: 0; padding-right: 10px; flex-direction: row; }
+            button, select, input[type="range"] { width: auto; white-space: nowrap; }
+            .nav-right .photo-btn:not(.primary) { display: none; } /* hide some extra buttons on small screens */
+        }
     </style>
 </head>
 <body>
-    <div id="top-bar" onclick="openWordDialog()">
-        Your word: &nbsp;<span id="current-word-display">Loading...</span> &nbsp;⚙️
-    </div>
+    
+    <header id="main-header">
+        <div class="nav-left">
+            <i class="fas fa-magic"></i>
+            <span style="display: none;">WispDraw Pro</span> <div id="top-bar" onclick="openWordDialog()">
+                Your word: &nbsp;<span id="current-word-display" style="color:#feca57;">Loading...</span> &nbsp;⚙️
+            </div>
+        </div>
+
+        <div class="nav-right">
+            <button class="photo-btn" id="downloadVisualBtn"><i class="fas fa-download"></i> Download</button>
+        </div>
+    </header>
+
     <div id="status-bar"><span id="syncText">🟡 Waiting...</span></div>
     
     <div id="dialog-overlay" onclick="closeWordDialog()"></div>
@@ -93,12 +157,10 @@
             <div class="dialog-title">Your word: <br><span id="dialog-word-text">Loading...</span></div>
             <button id="closeDialogBtn" onclick="closeWordDialog()">✖</button>
         </div>
-        
         <div id="word-buttons">
             <button id="nextWordBtn" class="action-btn">Next Word ⏭️</button>
             <button id="writeWordBtn" class="action-btn">Write Custom Word ✍️</button>
         </div>
-        
         <div id="word-input-container">
             <p style="margin:0 0 10px 0; font-size:15px; color:#ddd; text-align:left;">Write your word here:</p>
             <input type="text" id="customWordInput" placeholder="Type a word...">
@@ -119,40 +181,52 @@
         </div>
     </div>
 
-    <div id="canvas-container">
-        <canvas id="board"></canvas>
-        <div id="comments-wrapper">
-            <div style="display: flex; justify-content: flex-end; pointer-events: auto; margin-bottom: 5px;">
-                <button id="toggleCommentsBtn" style="padding: 6px 10px; border-radius: 8px; background: rgba(0,0,0,0.6); color: white; border: none; font-size: 12px; cursor: pointer; backdrop-filter: blur(4px);">🔽 Hide</button>
-            </div>
-            <div id="comments-container"></div> 
-        </div>
-    </div>
-    
-    <div id="toolbar">
-        <div id="palette">
-            <div class="color-wheel-wrapper" title="Choose Color">
-                <input type="color" id="colorPicker" value="#000000">
-            </div>
-        </div>
+    <div id="app-body">
         
-        <input type="range" id="brushSize" min="1" max="50" value="5">
-        <select id="toolSelect">
-            <option value="solid">🖌️ Solid Brush</option>
-            <option value="fill">🪣 Fill Color</option>
-            <option value="airbrush">💨 Airbrush</option>
-            <option value="velvet">🖍️ Velvet</option>
-            <option value="wet">🖌️ Wet Brush</option>
-            <option value="spray">💨 Spray</option>
-            <option value="eraser">🧽 Eraser</option>
-            <option value="line">📏 Line</option>
-            <option value="rect">🔲 Rectangle</option>
-            <option value="circle">⭕ Circle</option>
-        </select>
-        
-        <button id="undoBtn">↩️ Undo</button>
-        <button id="redoBtn">↪️ Redo</button>
-        <button id="clearBtn">🗑️ Clear</button>
+        <div id="toolbar">
+            <div id="palette">
+                <span style="font-size: 11px; color: #666; font-weight: bold; text-transform: uppercase;">Color</span>
+                <div class="color-wheel-wrapper" title="Choose Color">
+                    <input type="color" id="colorPicker" value="#000000">
+                </div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                <span style="font-size: 11px; color: #666; font-weight: bold; text-transform: uppercase;">Size</span>
+                <input type="range" id="brushSize" min="1" max="50" value="5">
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                <span style="font-size: 11px; color: #666; font-weight: bold; text-transform: uppercase;">Tool</span>
+                <select id="toolSelect">
+                    <option value="solid">🖌️ Solid Brush</option>
+                    <option value="fill">🪣 Fill Color</option>
+                    <option value="airbrush">💨 Airbrush</option>
+                    <option value="velvet">🖍️ Velvet</option>
+                    <option value="wet">🖌️ Wet Brush</option>
+                    <option value="spray">💨 Spray</option>
+                    <option value="eraser">🧽 Eraser</option>
+                    <option value="line">📏 Line</option>
+                    <option value="rect">🔲 Rectangle</option>
+                    <option value="circle">⭕ Circle</option>
+                </select>
+            </div>
+            
+            <div style="flex: 1;"></div> <button id="undoBtn">↩️ Undo</button>
+            <button id="redoBtn">↪️ Redo</button>
+            <button id="clearBtn">🗑️ Clear</button>
+        </div>
+
+        <div id="canvas-container">
+            <canvas id="board"></canvas>
+            <div id="comments-wrapper">
+                <div style="display: flex; justify-content: flex-end; pointer-events: auto; margin-bottom: 5px;">
+                    <button id="toggleCommentsBtn" style="padding: 6px 10px; border-radius: 8px; background: rgba(0,0,0,0.6); color: white; border: none; font-size: 12px; cursor: pointer; backdrop-filter: blur(4px);">🔽 Hide</button>
+                </div>
+                <div id="comments-container"></div> 
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -178,7 +252,7 @@
             document.getElementById('toolbar').style.display = 'none';
             document.getElementById('canvas-container').style.display = 'none';
             document.getElementById('status-bar').style.display = 'none';
-            document.getElementById('top-bar').style.display = 'none';
+            document.getElementById('main-header').style.display = 'none'; // Updated to hide new header
             const overlay = document.getElementById('viewer-overlay');
             overlay.style.display = 'flex';
             overlay.style.background = '#1e1e24';
