@@ -70,7 +70,7 @@
             color: #a78bfa; 
         }
         
-        #status-bar { position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: #fff; padding: 4px 12px; border-radius: 12px; text-align: center; font-size: 11px; z-index: 20; backdrop-filter: blur(4px); }
+        #status-bar { position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: #fff; padding: 4px 12px; border-radius: 12px; text-align: center; font-size: 11px; z-index: 20; backdrop-filter: blur(4px); pointer-events: none;}
         
         /* Canvas Area */
         #app-body { 
@@ -140,6 +140,7 @@
         /* Top Row: Tool Tabs */
         .tool-tabs {
             display: flex; justify-content: space-between; align-items: center;
+            position: relative;
         }
         .tab-btn {
             background: transparent; border: none;
@@ -148,6 +149,7 @@
             border-radius: 16px; cursor: pointer;
             display: flex; justify-content: center; align-items: center;
             transition: 0.2s; position: relative;
+            -webkit-user-select: none; user-select: none;
         }
         .tab-btn.active {
             color: var(--text-light);
@@ -168,6 +170,34 @@
             -webkit-mask-composite: xor; mask-composite: exclude;
         }
 
+        /* Long Press Brush Menu */
+        #brushMenu {
+            position: absolute;
+            bottom: 70px; /* Spawns directly above toolbar */
+            left: 20px;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 8px;
+            display: flex; flex-direction: column; gap: 4px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            opacity: 0; pointer-events: none;
+            transition: 0.2s; transform: translateY(10px);
+            z-index: 100;
+        }
+        #brushMenu.show {
+            opacity: 1; pointer-events: auto; transform: translateY(0);
+        }
+        .menu-item {
+            padding: 12px 18px; border-radius: 10px;
+            color: var(--text-muted); font-size: 14px; font-weight: 500;
+            cursor: pointer; display: flex; align-items: center; gap: 12px;
+            transition: 0.2s; white-space: nowrap;
+        }
+        .menu-item:hover, .menu-item.active {
+            background: rgba(124, 58, 237, 0.1); color: var(--text-light);
+        }
+
         /* Middle Row: Settings Box */
         .settings-box {
             background: rgba(0,0,0,0.2);
@@ -176,23 +206,36 @@
             display: flex; align-items: center; gap: 15px;
         }
         
-        .color-wheel-wrapper {
-            position: relative; width: 50px; height: 50px; border-radius: 50%;
-            background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
-            box-shadow: inset 0 0 0 4px #000, 0 0 10px rgba(0,0,0,0.5); cursor: pointer;
+        /* Custom Interactive Color Wheel */
+        .custom-wheel-container {
+            position: relative;
+            width: 70px; height: 70px;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            touch-action: none; 
+            cursor: crosshair;
         }
-        .color-wheel-wrapper::after {
-            content: ''; position: absolute; top: 12px; left: 12px; width: 10px; height: 10px;
-            border-radius: 50%; background: #fff; border: 2px solid #000;
+        #uiColorWheel {
+            width: 100%; height: 100%;
+            border-radius: 50%; display: block;
         }
-        .color-wheel-wrapper input[type="color"] {
-            opacity: 0; width: 100%; height: 100%; position: absolute; top:0; left:0; cursor: pointer;
+        #wheelThumb {
+            position: absolute;
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            border: 2px solid #ffffff;
+            background: #000000;
+            box-shadow: 0 0 4px rgba(0,0,0,0.8);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            top: 50%; left: 50%;
         }
 
         .recent-colors { display: flex; flex-direction: column; gap: 5px; }
         .recent-colors span { font-size: 8px; font-weight: 700; color: var(--text-muted); letter-spacing: 1px; }
         .swatch-row { display: flex; gap: 5px; align-items: center; }
-        .swatch { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); }
+        .swatch { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: 0.1s;}
+        .swatch:active { transform: scale(0.9); }
         .swatch.add { display:flex; justify-content:center; align-items:center; background: rgba(255,255,255,0.1); font-size: 10px; color: #fff;}
 
         .sliders { flex: 1; display: flex; flex-direction: column; gap: 12px; padding-left: 10px; border-left: 1px solid var(--panel-border); }
@@ -226,6 +269,7 @@
 
         /* Hide Original Select but keep it in DOM for JS */
         #toolSelect { display: none; }
+        #colorPicker { display: none; }
 
         /* Comments & Dialogs */
         #comments-wrapper { position: absolute; top: 60px; right: 15px; width: 200px; z-index: 15; pointer-events: none; }
@@ -318,9 +362,16 @@
         </div>
     </div>
 
+    <div id="brushMenu">
+        <div class="menu-item active" data-brush="solid"><i class="fas fa-paint-brush"></i> Solid</div>
+        <div class="menu-item" data-brush="airbrush"><i class="fas fa-spray-can"></i> Airbrush</div>
+        <div class="menu-item" data-brush="velvet"><i class="fas fa-marker"></i> Velvet</div>
+        <div class="menu-item" data-brush="wet"><i class="fas fa-tint"></i> Wet Brush</div>
+    </div>
+
     <div id="toolbar">
         <div class="tool-tabs">
-            <button class="tab-btn active" data-tool="solid"><i class="fas fa-paint-brush"></i></button>
+            <button class="tab-btn active" id="mainBrushBtn" data-tool="solid"><i class="fas fa-paint-brush"></i></button>
             <button class="tab-btn" data-tool="eraser"><i class="fas fa-eraser"></i></button>
             <button class="tab-btn" data-tool="spray"><div class="color-ring"></div></button>
             <button class="tab-btn" data-tool="rect"><i class="far fa-object-group"></i></button>
@@ -341,14 +392,18 @@
 
         <div class="settings-box">
             <div style="display: flex; gap: 15px; align-items: center;">
-                <div class="color-wheel-wrapper">
-                    <input type="color" id="colorPicker" value="#000000">
+                
+                <div class="custom-wheel-container">
+                    <canvas id="uiColorWheel" width="100" height="100"></canvas>
+                    <div id="wheelThumb"></div>
                 </div>
+                <input type="color" id="colorPicker" value="#000000">
+
                 <div class="recent-colors">
                     <span>RECENT COLORS</span>
                     <div class="swatch-row">
-                        <div class="swatch" style="background: #000;"></div>
-                        <div class="swatch" style="background: #fff;"></div>
+                        <div class="swatch" style="background: #000000;"></div>
+                        <div class="swatch" style="background: #ffffff;"></div>
                         <div class="swatch" style="background: #ef4444;"></div>
                         <div class="swatch" style="background: #3b82f6;"></div>
                         <div class="swatch" style="background: #22c55e;"></div>
@@ -380,7 +435,46 @@
 
 
     <script>
-        document.querySelectorAll('.tab-btn[data-tool]').forEach(btn => {
+        // --- 1. LONG PRESS BRUSH MENU LOGIC ---
+        const brushTab = document.getElementById('mainBrushBtn');
+        const brushMenu = document.getElementById('brushMenu');
+        let pressTimer;
+        let isPressing = false;
+        let currentBrushType = 'solid';
+
+        const showMenu = () => {
+            brushMenu.classList.add('show');
+            if (navigator.vibrate) navigator.vibrate(50);
+        };
+
+        const startPress = (e) => {
+            isPressing = true;
+            pressTimer = setTimeout(showMenu, 1500); // Trigger after 1.5 seconds
+        };
+
+        const cancelPress = () => {
+            if (!isPressing) return;
+            isPressing = false;
+            clearTimeout(pressTimer);
+        };
+
+        brushTab.addEventListener('mousedown', startPress);
+        brushTab.addEventListener('touchstart', startPress);
+        brushTab.addEventListener('mouseup', cancelPress);
+        brushTab.addEventListener('mouseleave', cancelPress);
+        brushTab.addEventListener('touchend', cancelPress);
+
+        // Standard click for brush icon to activate last used brush
+        brushTab.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            brushTab.classList.add('active');
+            const select = document.getElementById('toolSelect');
+            select.value = currentBrushType;
+            select.dispatchEvent(new Event('change'));
+        });
+
+        // Other generic tabs logic
+        document.querySelectorAll('.tab-btn:not(#mainBrushBtn)').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 e.currentTarget.classList.add('active');
@@ -392,6 +486,153 @@
             });
         });
 
+        // Menu selection logic
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                currentBrushType = e.currentTarget.getAttribute('data-brush');
+                const select = document.getElementById('toolSelect');
+                select.value = currentBrushType;
+                select.dispatchEvent(new Event('change'));
+                
+                document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                brushMenu.classList.remove('show');
+                
+                // Set icon active
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                brushTab.classList.add('active');
+            });
+        });
+
+        // Close menu if click outside
+        document.addEventListener('click', (e) => {
+            if(!brushTab.contains(e.target) && !brushMenu.contains(e.target)) {
+                brushMenu.classList.remove('show');
+            }
+        });
+
+        // --- 2. CUSTOM COLOR WHEEL (BLACK CENTER -> COLOR EDGE) ---
+        const wCanvas = document.getElementById('uiColorWheel');
+        const wCtx = wCanvas.getContext('2d');
+        const wheelRadius = wCanvas.width / 2;
+
+        const imgData = wCtx.createImageData(wCanvas.width, wCanvas.height);
+        const data = imgData.data;
+
+        function hslToRgb(h, s, l) {
+            let r, g, b;
+            if(s === 0) { r = g = b = l; }
+            else {
+                const hue2rgb = (p, q, t) => {
+                    if(t < 0) t += 1;
+                    if(t > 1) t -= 1;
+                    if(t < 1/6) return p + (q - p) * 6 * t;
+                    if(t < 1/2) return q;
+                    if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    return p;
+                }
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1/3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1/3);
+            }
+            return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+        }
+
+        // Draw wheel gradient
+        for(let y=0; y<wCanvas.height; y++) {
+            for(let x=0; x<wCanvas.width; x++) {
+                let dx = x - wheelRadius;
+                let dy = y - wheelRadius;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                let idx = (y * wCanvas.width + x) * 4;
+                
+                if(dist <= wheelRadius) {
+                    let angle = Math.atan2(dy, dx);
+                    let h = (angle + Math.PI) / (2 * Math.PI); 
+                    let s = 1.0;
+                    let l = (dist / wheelRadius) * 0.5; // 0 at center (Black), 0.5 at edge (Full Color)
+                    
+                    let rgb = hslToRgb(h, s, l);
+                    data[idx] = rgb[0];
+                    data[idx+1] = rgb[1];
+                    data[idx+2] = rgb[2];
+                    data[idx+3] = 255;
+                } else {
+                    data[idx+3] = 0; // Transparent
+                }
+            }
+        }
+        wCtx.putImageData(imgData, 0, 0);
+
+        function rgbToHex(r, g, b) {
+            return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1);
+        }
+
+        function handleWheelPick(e) {
+            e.preventDefault();
+            const rect = wCanvas.getBoundingClientRect();
+            let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            // Map interaction to canvas resolution
+            let x = (clientX - rect.left) * (wCanvas.width / rect.width);
+            let y = (clientY - rect.top) * (wCanvas.height / rect.height);
+            
+            let dx = x - wheelRadius;
+            let dy = y - wheelRadius;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            
+            // Clamp thumb to circle boundaries
+            if(dist > wheelRadius) {
+                x = wheelRadius + (dx / dist) * wheelRadius;
+                y = wheelRadius + (dy / dist) * wheelRadius;
+            }
+            
+            x = Math.max(0, Math.min(wCanvas.width - 1, Math.round(x)));
+            y = Math.max(0, Math.min(wCanvas.height - 1, Math.round(y)));
+
+            const pixel = wCtx.getImageData(x, y, 1, 1).data;
+            const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+            
+            // Apply color to hidden input
+            document.getElementById('colorPicker').value = hex;
+            
+            // Update visual thumb
+            const thumb = document.getElementById('wheelThumb');
+            thumb.style.left = (x / wCanvas.width * 100) + '%';
+            thumb.style.top = (y / wCanvas.height * 100) + '%';
+            thumb.style.backgroundColor = hex;
+            
+            // Trigger actual app color update
+            document.getElementById('colorPicker').dispatchEvent(new Event('input'));
+        }
+
+        // Seamless drag selection for the color wheel
+        wCanvas.addEventListener('pointerdown', (e) => {
+            wCanvas.setPointerCapture(e.pointerId);
+            handleWheelPick(e);
+            wCanvas.addEventListener('pointermove', handleWheelPick);
+        });
+        wCanvas.addEventListener('pointerup', (e) => {
+            wCanvas.removeEventListener('pointermove', handleWheelPick);
+            wCanvas.releasePointerCapture(e.pointerId);
+        });
+
+        // Swatch clicks support
+        document.querySelectorAll('.swatch:not(.add)').forEach(sw => {
+            sw.addEventListener('click', (e) => {
+                let bg = e.target.style.background || e.target.style.backgroundColor;
+                let match = bg.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+                let hex = match ? rgbToHex(parseInt(match[1]), parseInt(match[2]), parseInt(match[3])) : bg;
+                document.getElementById('colorPicker').value = hex;
+                document.getElementById('colorPicker').dispatchEvent(new Event('input'));
+                document.getElementById('wheelThumb').style.backgroundColor = hex;
+            });
+        });
+
+        // --- 3. MISC UI ELEMENTS ---
         const sizeSlider = document.getElementById('brushSize');
         const sizeVal = document.getElementById('brushSizeVal');
         sizeSlider.addEventListener('input', (e) => {
@@ -536,7 +777,7 @@
             if (tool === 'eraser') document.getElementById('toolSelect').value = 'solid';
         });
 
-        // --- UPDATED CANVAS SIZING TO FORCE 800x800 SQUARE ---
+        // FORCES 800x800 SQUARE RESOLUTION 
         const dpr = window.devicePixelRatio || 1;
         canvas.width = 800 * dpr;
         canvas.height = 800 * dpr;
@@ -1043,7 +1284,6 @@
                 let color = tool === 'eraser' ? 'white' : document.getElementById('colorPicker').value;
                 let size = document.getElementById('brushSize').value * dpr;
 
-                // --- NEW OPACITY LOGIC HERE ---
                 let baseAlpha = document.getElementById('visualOpacity').value / 100;
                 ctx.strokeStyle = color;
                 ctx.fillStyle = color;
@@ -1102,7 +1342,6 @@
                     history = history.slice(0, historyStep + 1); 
                     saveState(); 
                     ctx.shadowBlur = 0;
-                    // --- RESET OPACITY WITH SLIDER VALUE ---
                     ctx.globalAlpha = document.getElementById('visualOpacity').value / 100;
                     ctx.globalCompositeOperation = 'source-over';
                 } else if (drawing) {
