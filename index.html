@@ -373,7 +373,7 @@
 
     <div id="brushMenu">
         <div class="menu-item active" data-brush="solid"><i class="fas fa-paint-brush"></i> Solid Brush</div>
-        <div class="menu-item" data-brush="ink"><i class="fas fa-pen-nib"></i> Ink Pen</div>
+        <div class="menu-item" data-brush="smooth"><i class="fas fa-pen"></i> Smooth Pen</div>
         <div class="menu-item" data-brush="watercolor"><i class="fas fa-tint"></i> Watercolor</div>
         <div class="menu-item" data-brush="airbrush"><i class="fas fa-spray-can"></i> Airbrush</div>
         <div class="menu-item" data-brush="spray"><i class="fas fa-braille"></i> Spray Paint</div>
@@ -396,7 +396,7 @@
 
         <select id="toolSelect">
             <option value="solid" selected>🖌️ Solid Brush</option>
-            <option value="ink">✒️ Ink Pen</option>
+            <option value="smooth">✒️ Smooth Pen</option>
             <option value="watercolor">💧 Watercolor</option>
             <option value="airbrush">💨 Airbrush</option>
             <option value="spray">💨 Spray</option>
@@ -1302,17 +1302,15 @@
 
                 let tool = document.getElementById('toolSelect').value;
                 let baseAlpha = document.getElementById('visualOpacity').value / 100;
+
+                // FIX: Bypass Fill operation on pointerdown to prevent freeze when trying to zoom.
+                if (tool === 'fill') {
+                    drawing = true;
+                    return; 
+                }
                 
                 strokeCtx.clearRect(0, 0, strokeCanvas.width, strokeCanvas.height);
                 strokeCanvas.style.opacity = baseAlpha;
-
-                if (tool === 'fill') {
-                    let rgb = hexToRgb(document.getElementById('colorPicker').value);
-                    rgb[3] = Math.round(baseAlpha * 255);
-                    floodFill(startX, startY, rgb);
-                    saveState();
-                    return;
-                }
                 
                 if (tool === 'spray') {
                     let color = document.getElementById('colorPicker').value;
@@ -1327,7 +1325,7 @@
                         strokeCtx.globalAlpha = Math.random() * 0.6 + 0.2;
                         strokeCtx.fillRect(px, py, 1.5, 1.5);
                     }
-                } else if (['solid', 'airbrush', 'eraser', 'ink', 'watercolor'].includes(tool)) {
+                } else if (['solid', 'airbrush', 'eraser', 'smooth', 'watercolor'].includes(tool)) {
                     let color = tool === 'eraser' ? 'white' : document.getElementById('colorPicker').value;
                     let size = document.getElementById('brushSize').value * dpr;
                     
@@ -1339,9 +1337,7 @@
                     strokeCtx.shadowBlur = 0;
 
                     if (tool === 'watercolor') {
-                        strokeCtx.globalAlpha = 0.1;
-                        strokeCtx.shadowBlur = size;
-                        strokeCtx.shadowColor = color;
+                        strokeCtx.globalAlpha = 0.05; 
                     } else {
                         strokeCtx.globalAlpha = 1.0;
                     }
@@ -1363,6 +1359,16 @@
                 let tool = document.getElementById('toolSelect').value;
                 let color = tool === 'eraser' ? 'white' : document.getElementById('colorPicker').value;
                 let size = document.getElementById('brushSize').value * dpr;
+
+                // FIX: If the user drags significantly while "Fill" is active, cancel it so they can pan/zoom smoothly.
+                if (tool === 'fill') {
+                    const currentX = (e.clientX - rect.left) * (canvas.width / rect.width);
+                    const currentY = (e.clientY - rect.top) * (canvas.height / rect.height);
+                    if (Math.hypot(currentX - startX, currentY - startY) > 20) {
+                        drawing = false;
+                    }
+                    return;
+                }
 
                 strokeCtx.strokeStyle = color;
                 strokeCtx.fillStyle = color;
@@ -1388,45 +1394,25 @@
                             strokeCtx.fillRect(px, py, 1.5, 1.5);
                         }
                         lastX = currentX; lastY = currentY;
-                    } else if (tool === 'ink') {
-                        const midX = (lastX + currentX) / 2;
-                        const midY = (lastY + currentY) / 2;
-                        
-                        // Calculate pointer speed to adjust stroke width dynamically
-                        let dist = Math.hypot(currentX - lastX, currentY - lastY);
-                        let dynamicSize = Math.max(size * 0.2, size - dist * 0.2);
-                        
-                        strokeCtx.lineWidth = dynamicSize;
-                        strokeCtx.globalAlpha = 1.0;
-                        
-                        strokeCtx.beginPath();
-                        strokeCtx.moveTo(prevMidX, prevMidY);
-                        strokeCtx.quadraticCurveTo(lastX, lastY, midX, midY);
-                        strokeCtx.stroke(); 
-                        
-                        prevMidX = midX; prevMidY = midY; lastX = currentX; lastY = currentY;
                     } else if (tool === 'watercolor') {
                         const midX = (lastX + currentX) / 2;
                         const midY = (lastY + currentY) / 2;
                         
-                        // Base diffuse edge
-                        strokeCtx.lineWidth = size;
-                        strokeCtx.globalAlpha = 0.05;
-                        strokeCtx.shadowBlur = size;
-                        strokeCtx.shadowColor = color;
-                        
+                        // Outer wet edge
+                        strokeCtx.lineWidth = size * 1.4;
+                        strokeCtx.globalAlpha = 0.02;
                         strokeCtx.beginPath();
                         strokeCtx.moveTo(prevMidX, prevMidY);
                         strokeCtx.quadraticCurveTo(lastX, lastY, midX, midY);
                         strokeCtx.stroke(); 
                         
-                        // Inner saturated core
-                        strokeCtx.lineWidth = size * 0.6;
-                        strokeCtx.globalAlpha = 0.1;
+                        // Inner core
+                        strokeCtx.lineWidth = size * 0.7;
+                        strokeCtx.globalAlpha = 0.05;
                         strokeCtx.stroke(); 
                         
                         prevMidX = midX; prevMidY = midY; lastX = currentX; lastY = currentY;
-                    } else if (['solid', 'airbrush', 'eraser'].includes(tool)) {
+                    } else if (['solid', 'airbrush', 'eraser', 'smooth'].includes(tool)) {
                         const midX = (lastX + currentX) / 2;
                         const midY = (lastY + currentY) / 2;
                         
@@ -1468,7 +1454,19 @@
                     let tool = document.getElementById('toolSelect').value;
                     let baseAlpha = document.getElementById('visualOpacity').value / 100;
                     
-                    if (['solid', 'airbrush', 'eraser', 'ink', 'watercolor'].includes(tool)) {
+                    // FIX: Execute Fill on pointer release, perfectly clamped.
+                    if (tool === 'fill') {
+                        let sx = Math.max(0, Math.min(canvas.width - 1, Math.round(startX)));
+                        let sy = Math.max(0, Math.min(canvas.height - 1, Math.round(startY)));
+                        let rgb = hexToRgb(document.getElementById('colorPicker').value);
+                        rgb[3] = Math.round(baseAlpha * 255);
+                        floodFill(sx, sy, rgb);
+                        saveState();
+                        drawing = false;
+                        return;
+                    }
+
+                    if (['solid', 'airbrush', 'eraser', 'smooth', 'watercolor'].includes(tool)) {
                         strokeCtx.beginPath();
                         strokeCtx.moveTo(prevMidX, prevMidY);
                         strokeCtx.lineTo(lastX, lastY);
