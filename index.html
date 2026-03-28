@@ -200,7 +200,7 @@
         .menu-item i { width: 16px; text-align: center; }
         .menu-item:hover, .menu-item.active { background: rgba(124, 58, 237, 0.1); color: var(--text-light); }
 
-        /* Big Color Wheel Overlay (NEW) */
+        /* Big Color Wheel Overlay */
         #colorWheelOverlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
@@ -508,7 +508,6 @@
 
         openColorWheelBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            // Don't deselect the brush, just open the modal
             colorWheelOverlay.classList.add('show');
         });
 
@@ -516,7 +515,6 @@
             colorWheelOverlay.classList.remove('show');
         });
 
-        // Close when clicking outside popup
         colorWheelOverlay.addEventListener('click', (e) => {
             if(!wheelPopupContent.contains(e.target)) {
                 colorWheelOverlay.classList.remove('show');
@@ -551,7 +549,7 @@
             return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
         }
 
-        // Generate Color Wheel (0 Lightness at center = Black)
+        // Generate Color Wheel
         for(let y=0; y<wCanvas.height; y++) {
             for(let x=0; x<wCanvas.width; x++) {
                 let dx = x - wheelRadius;
@@ -563,7 +561,7 @@
                     let angle = Math.atan2(dy, dx);
                     let h = (angle + Math.PI) / (2 * Math.PI); 
                     let s = 1.0;
-                    let l = (dist / wheelRadius) * 0.5; // Fades from Black (0) to Pure Color (0.5)
+                    let l = (dist / wheelRadius) * 0.5; 
                     
                     let rgb = hslToRgb(h, s, l);
                     data[idx] = rgb[0];
@@ -626,7 +624,6 @@
             wCanvas.releasePointerCapture(e.pointerId);
         });
 
-        // Sub swatches
         document.querySelectorAll('.swatch:not(.active-color)').forEach(sw => {
             sw.addEventListener('click', (e) => {
                 let bg = e.target.style.background || e.target.style.backgroundColor;
@@ -783,7 +780,6 @@
             if (tool === 'eraser') document.getElementById('toolSelect').value = 'solid';
         });
 
-        // FORCES 800x800 SQUARE RESOLUTION 
         const dpr = window.devicePixelRatio || 1;
         canvas.width = 800 * dpr;
         canvas.height = 800 * dpr;
@@ -1247,6 +1243,9 @@
         let drawing = false;
         let isZooming = false;
         let startX, startY;
+        let lastX, lastY;
+        let prevMidX, prevMidY;
+        
         let tempCanvas = document.createElement('canvas');
         tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
         let tempCtx = tempCanvas.getContext('2d');
@@ -1264,6 +1263,11 @@
                 
                 startX = (e.clientX - rect.left) * (canvas.width / rect.width);
                 startY = (e.clientY - rect.top) * (canvas.height / rect.height);
+                
+                lastX = startX;
+                lastY = startY;
+                prevMidX = startX;
+                prevMidY = startY;
 
                 tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
                 tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height); 
@@ -1274,6 +1278,37 @@
                     saveState();
                     return;
                 }
+                
+                // Draw initial dot for taps
+                if (['solid', 'airbrush', 'eraser', 'velvet', 'wet'].includes(tool)) {
+                    let color = tool === 'eraser' ? 'white' : document.getElementById('colorPicker').value;
+                    let size = document.getElementById('brushSize').value * dpr;
+                    let baseAlpha = document.getElementById('visualOpacity').value / 100;
+                    
+                    ctx.strokeStyle = color;
+                    ctx.fillStyle = color;
+                    ctx.lineWidth = size;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.shadowBlur = 0;
+
+                    if (tool === 'velvet') {
+                        ctx.globalAlpha = baseAlpha * 0.7;
+                        ctx.shadowBlur = 2;
+                        ctx.shadowColor = color;
+                    } else if (tool === 'wet') {
+                        ctx.globalAlpha = baseAlpha * 0.15;
+                        ctx.shadowBlur = size * 0.8;
+                        ctx.shadowColor = color;
+                    } else {
+                        ctx.globalAlpha = baseAlpha;
+                    }
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(startX + 0.1, startY + 0.1);
+                    ctx.stroke();
+                }
 
                 drawing = true;
             });
@@ -1281,24 +1316,19 @@
             container.addEventListener('pointermove', (e) => {
                 if (e.pointerType === 'touch' && !e.isPrimary) return;
                 if (!drawing || isZooming || (!gameIsActive && !keepDrawing)) return;
+                
                 const rect = canvas.getBoundingClientRect();
-                
-                const currentX = (e.clientX - rect.left) * (canvas.width / rect.width);
-                const currentY = (e.clientY - rect.top) * (canvas.height / rect.height);
-                
                 let tool = document.getElementById('toolSelect').value;
                 let color = tool === 'eraser' ? 'white' : document.getElementById('colorPicker').value;
                 let size = document.getElementById('brushSize').value * dpr;
-
                 let baseAlpha = document.getElementById('visualOpacity').value / 100;
+
                 ctx.strokeStyle = color;
                 ctx.fillStyle = color;
                 ctx.lineWidth = size;
-                
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
                 ctx.globalCompositeOperation = 'source-over';
-                ctx.globalAlpha = baseAlpha;
                 ctx.shadowBlur = 0;
 
                 if (tool === 'velvet') {
@@ -1309,26 +1339,55 @@
                     ctx.globalAlpha = baseAlpha * 0.15;
                     ctx.shadowBlur = size * 0.8;
                     ctx.shadowColor = color;
+                } else {
+                    ctx.globalAlpha = baseAlpha;
                 }
 
-                if (tool === 'spray') {
-                    ctx.fillStyle = color;
-                    let density = Math.max(10, size * 2.5);
-                    for (let i = 0; i < density; i++) {
-                        let rad = size * Math.sqrt(Math.random());
-                        let angle = Math.random() * 2 * Math.PI;
-                        let px = currentX + rad * Math.cos(angle);
-                        let py = currentY + rad * Math.sin(angle);
-                        ctx.globalAlpha = (Math.random() * 0.6 + 0.2) * baseAlpha;
-                        ctx.fillRect(px, py, 1.5, 1.5);
+                // High-performance Coalesced Events + Quadratic Curves for ultimate smoothness
+                const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+                
+                for (let ev of events) {
+                    const currentX = (ev.clientX - rect.left) * (canvas.width / rect.width);
+                    const currentY = (ev.clientY - rect.top) * (canvas.height / rect.height);
+
+                    if (tool === 'spray') {
+                        let density = Math.max(10, size * 2.5);
+                        for (let i = 0; i < density; i++) {
+                            let rad = size * Math.sqrt(Math.random());
+                            let angle = Math.random() * 2 * Math.PI;
+                            let px = currentX + rad * Math.cos(angle);
+                            let py = currentY + rad * Math.sin(angle);
+                            ctx.globalAlpha = (Math.random() * 0.6 + 0.2) * baseAlpha;
+                            ctx.fillRect(px, py, 1.5, 1.5);
+                        }
+                        lastX = currentX; lastY = currentY;
+                    } else if (['solid', 'airbrush', 'eraser', 'velvet', 'wet'].includes(tool)) {
+                        const midX = (lastX + currentX) / 2;
+                        const midY = (lastY + currentY) / 2;
+
+                        ctx.beginPath();
+                        ctx.moveTo(prevMidX, prevMidY);
+                        ctx.quadraticCurveTo(lastX, lastY, midX, midY);
+                        
+                        if(tool === 'airbrush') { ctx.shadowBlur = size * 2; ctx.shadowColor = color; }
+                        ctx.stroke(); 
+                        
+                        prevMidX = midX;
+                        prevMidY = midY;
+                        lastX = currentX;
+                        lastY = currentY;
                     }
-                    startX = currentX; startY = currentY;
-                } else if (['solid', 'airbrush', 'eraser', 'velvet', 'wet'].includes(tool)) {
-                    ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(currentX, currentY);
-                    if(tool === 'airbrush') { ctx.shadowBlur = size * 2; ctx.shadowColor = color; }
-                    ctx.stroke(); startX = currentX; startY = currentY;
-                } else {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height); ctx.beginPath();
+                }
+                
+                // Handle shapes natively without overdrawing per coalesced event
+                if (['line', 'rect', 'circle'].includes(tool)) {
+                    const finalEv = events[events.length - 1];
+                    const currentX = (finalEv.clientX - rect.left) * (canvas.width / rect.width);
+                    const currentY = (finalEv.clientY - rect.top) * (canvas.height / rect.height);
+                    
+                    ctx.clearRect(0, 0, canvas.width, canvas.height); 
+                    ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height); 
+                    ctx.beginPath();
                     if (tool === 'line') { ctx.moveTo(startX, startY); ctx.lineTo(currentX, currentY); ctx.stroke(); }
                     if (tool === 'rect') { ctx.rect(startX, startY, currentX - startX, currentY - startY); ctx.stroke(); }
                     if (tool === 'circle') { ctx.arc(startX, startY, Math.abs(currentX - startX), 0, Math.PI * 2); ctx.stroke(); }
@@ -1338,9 +1397,17 @@
             container.addEventListener('pointerup', (e) => { 
                 if (e.pointerType === 'touch' && !e.isPrimary) return;
                 if(drawing && !isZooming && (gameIsActive || keepDrawing)) { 
-                    drawing = false; 
                     
-                    if (['line', 'rect', 'circle'].includes(document.getElementById('toolSelect').value)) {
+                    let tool = document.getElementById('toolSelect').value;
+                    
+                    if (['solid', 'airbrush', 'eraser', 'velvet', 'wet'].includes(tool)) {
+                        ctx.beginPath();
+                        ctx.moveTo(prevMidX, prevMidY);
+                        ctx.lineTo(lastX, lastY);
+                        ctx.stroke();
+                    }
+                    
+                    if (['line', 'rect', 'circle'].includes(tool)) {
                         tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
                         tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
                     }
@@ -1350,6 +1417,7 @@
                     ctx.shadowBlur = 0;
                     ctx.globalAlpha = document.getElementById('visualOpacity').value / 100;
                     ctx.globalCompositeOperation = 'source-over';
+                    drawing = false; 
                 } else if (drawing) {
                     drawing = false;
                 }
