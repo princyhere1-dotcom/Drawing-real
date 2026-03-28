@@ -6,146 +6,259 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        /* --- Modern UI CSS --- */
+        /* --- Exact Photo Match UI CSS --- */
         :root {
-            --nav-bg: #1f293a;
-            --text-color: #ffffff;
-            --btn-bg: rgba(255, 255, 255, 0.1);
-            --btn-hover: rgba(255, 255, 255, 0.2);
-            --accent-blue: #3b82f6;
-            --accent-hover: #2563eb;
-            --toolbar-bg: #ffffff;
+            --bg-dark: #09090e;
+            --panel-bg: #12111a;
+            --panel-border: #1e1d2b;
+            --purple-primary: #7c3aed;
+            --purple-glow: rgba(124, 58, 237, 0.4);
+            --text-light: #ffffff;
+            --text-muted: #8b8a96;
+            --canvas-bg: #ffffff;
         }
 
-        body { margin: 0; padding: 0; background: #f1f3f4; display: flex; flex-direction: column; height: 100vh; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; touch-action: none; overflow: hidden; }
+        body { 
+            margin: 0; padding: 0; 
+            background: var(--bg-dark); 
+            display: flex; flex-direction: column; 
+            height: 100vh; 
+            font-family: 'Inter', sans-serif; 
+            touch-action: none; 
+            overflow: hidden; 
+            color: var(--text-light);
+        }
         
-        /* Modern Top Bar */
-        #main-header {
-            background-color: var(--nav-bg);
-            color: var(--text-color);
+        /* Top Navigation Bar */
+        #header-nav {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 10px 24px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 15px 20px;
             z-index: 50;
         }
 
-        .nav-left { display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 600; }
-        .nav-left i { color: var(--accent-blue); font-size: 24px; }
-        .nav-right { display: flex; align-items: center; gap: 10px; }
+        .icon-btn-dark {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            color: var(--text-light);
+            width: 40px; height: 40px;
+            border-radius: 12px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 16px; cursor: pointer;
+        }
 
-        /* The user's original top-bar integrated nicely */
+        /* The original top-bar mapped to the center title */
         #top-bar { 
-            background: rgba(0,0,0,0.3); color: #fff; padding: 8px 16px; border-radius: 8px; text-align: center; font-size: 16px; font-weight: bold; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.1); transition: 0.2s;
+            text-align: center; cursor: pointer; user-select: none;
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
         }
-        #top-bar:hover { background: rgba(0,0,0,0.5); }
-        
-        #status-bar { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: #fff; padding: 4px 12px; border-radius: 12px; text-align: center; font-size: 11px; z-index: 20; backdrop-filter: blur(4px); }
-        
-        /* Photo UI Buttons */
-        .photo-btn {
-            background-color: var(--btn-bg); color: var(--text-color); border: 1px solid rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 8px; transition: background 0.2s; font-weight: 600;
+        #top-bar h1 {
+            margin: 0; font-size: 16px; font-weight: 700; letter-spacing: 2px;
         }
-        .photo-btn:hover { background-color: var(--btn-hover); }
-        .photo-btn.primary { background-color: var(--accent-blue); border-color: var(--accent-blue); }
-        .photo-btn.primary:hover { background-color: var(--accent-hover); }
-
-        /* Overlays */
-        #viewer-overlay { display: none; background: #ff4757; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 18px; z-index: 100; width: 100%; height: 100vh; box-sizing: border-box; align-items: center; justify-content: center; flex-direction: column; position: absolute; top: 0; left: 0; }
-        #win-overlay { display: none; background: rgba(52, 152, 219, 0.95); color: white; position: absolute; top:0; left:0; width:100%; height:100%; z-index: 90; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(8px); }
-        .win-btn { padding: 14px 28px; font-size: 16px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.2s; }
-        .win-btn:active { transform: scale(0.95); }
+        .word-badge {
+            background: rgba(124, 58, 237, 0.1);
+            color: var(--text-muted);
+            font-size: 10px; font-weight: 600; letter-spacing: 1px;
+            padding: 4px 10px; border-radius: 10px;
+        }
+        #current-word-display {
+            color: #a78bfa; /* Light purple for the word */
+        }
+        
+        #status-bar { position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: #fff; padding: 4px 12px; border-radius: 12px; text-align: center; font-size: 11px; z-index: 20; backdrop-filter: blur(4px); }
         
         /* Canvas Area */
-        #app-body { display: flex; flex: 1; position: relative; justify-content: center; align-items: center; }
-        #canvas-container { width: 100vw; height: 100vw; max-width: 800px; max-height: 800px; position: relative; background: #ffffff; touch-action: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; border-radius: 16px; }
+        #app-body { 
+            display: flex; flex: 1; justify-content: center; align-items: flex-start; 
+            padding: 0 20px; position: relative;
+        }
+
+        #canvas-container { 
+            width: 100%; aspect-ratio: 4/3; max-height: 55vh;
+            position: relative; 
+            background-color: var(--canvas-bg);
+            /* Grid pattern from photo */
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px), 
+                linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            border-radius: 24px;
+            touch-action: none; 
+            overflow: hidden; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); 
+        }
+        
         canvas { position: absolute; top: 0; left: 0; transform-origin: top left; touch-action: none; }
         
-        /* Vertical Left Sidebar (Modernized #toolbar) */
+        /* Floating Canvas Buttons */
+        .floating-btn {
+            position: absolute;
+            background: #ffffff; color: #333;
+            border: 1px solid #e5e5e5;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 500;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            cursor: pointer; z-index: 20;
+        }
+        
+        #toggleCommentsBtn {
+            top: 15px; right: 15px;
+            padding: 6px 12px; gap: 6px;
+        }
+        #toggleCommentsBtn i { font-size: 12px; }
+        
+        #clearBtn {
+            bottom: 15px; right: 15px;
+            width: 36px; height: 36px;
+            color: #666;
+        }
+        
+        /* Bottom Control Panel */
         #toolbar { 
-            position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
-            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(15px);
-            padding: 20px 15px; display: flex; flex-direction: column; gap: 15px; 
-            align-items: stretch; box-shadow: 0 8px 32px rgba(0,0,0,0.15); z-index: 40; 
-            border-radius: 16px; border: 1px solid rgba(0,0,0,0.05); width: 160px; box-sizing: border-box; 
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 28px;
+            padding: 20px; margin: 20px;
+            display: flex; flex-direction: column; gap: 20px; 
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.3); z-index: 40; 
+            position: absolute; bottom: 0; left: 0; right: 0;
+            box-sizing: border-box;
         }
         
-        button, select, input[type="range"], input[type="text"] { 
-            padding: 10px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); 
-            font-weight: 600; font-size: 13px; background: #f8f9fa; color: #333;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02); outline: none; transition: 0.2s; width: 100%; box-sizing: border-box;
+        /* Top Row: Tool Tabs */
+        .tool-tabs {
+            display: flex; justify-content: space-between; align-items: center;
         }
-        button:active { background: #e2e8f0; transform: translateY(2px); }
-        select { cursor: pointer; }
+        .tab-btn {
+            background: transparent; border: none;
+            color: var(--text-muted); font-size: 20px;
+            width: 50px; height: 50px;
+            border-radius: 16px; cursor: pointer;
+            display: flex; justify-content: center; align-items: center;
+            transition: 0.2s; position: relative;
+        }
+        .tab-btn.active {
+            color: var(--text-light);
+            background: rgba(124, 58, 237, 0.1);
+            border: 1px solid var(--purple-primary);
+            box-shadow: 0 0 15px var(--purple-glow);
+        }
+        .tab-btn.active::after {
+            content: ''; position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%);
+            width: 20px; height: 3px; border-radius: 2px; background: var(--purple-primary);
+            box-shadow: 0 0 8px var(--purple-glow);
+        }
+        .color-ring {
+            width: 24px; height: 24px; border-radius: 50%;
+            border: 3px solid transparent;
+            background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red) border-box;
+            -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor; mask-composite: exclude;
+        }
+
+        /* Middle Row: Settings Box */
+        .settings-box {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--panel-border);
+            border-radius: 20px; padding: 15px;
+            display: flex; align-items: center; gap: 15px;
+        }
         
-        #palette { display: flex; flex-direction: column; align-items: center; gap: 8px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 15px; }
         .color-wheel-wrapper {
-            position: relative; width: 48px; height: 48px; border-radius: 50%;
+            position: relative; width: 50px; height: 50px; border-radius: 50%;
             background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
-            box-shadow: 0 3px 10px rgba(0,0,0,0.15); cursor: pointer; border: 3px solid #fff;
-            transition: transform 0.2s;
+            box-shadow: inset 0 0 0 4px #000, 0 0 10px rgba(0,0,0,0.5); cursor: pointer;
         }
-        .color-wheel-wrapper:active { transform: scale(0.9); }
+        .color-wheel-wrapper::after {
+            content: ''; position: absolute; top: 12px; left: 12px; width: 10px; height: 10px;
+            border-radius: 50%; background: #fff; border: 2px solid #000;
+        }
         .color-wheel-wrapper input[type="color"] {
             opacity: 0; width: 100%; height: 100%; position: absolute; top:0; left:0; cursor: pointer;
         }
 
-        #brushSize { accent-color: var(--accent-blue); cursor: pointer; padding: 0; }
-        #clearBtn { background: #fee2e2; color: #ef4444; border-color: #fecaca; }
-        #clearBtn:hover { background: #fecaca; }
-        
+        .recent-colors { display: flex; flex-direction: column; gap: 5px; }
+        .recent-colors span { font-size: 8px; font-weight: 700; color: var(--text-muted); letter-spacing: 1px; }
+        .swatch-row { display: flex; gap: 5px; align-items: center; }
+        .swatch { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); }
+        .swatch.add { display:flex; justify-content:center; align-items:center; background: rgba(255,255,255,0.1); font-size: 10px; color: #fff;}
+
+        .sliders { flex: 1; display: flex; flex-direction: column; gap: 12px; padding-left: 10px; border-left: 1px solid var(--panel-border); }
+        .slider-row { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 12px;}
+        input[type="range"] {
+            flex: 1; height: 4px; border-radius: 2px;
+            background: var(--panel-border); outline: none;
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+            background: #d8b4fe; border: 2px solid var(--purple-primary);
+            box-shadow: 0 0 8px var(--purple-glow); cursor: pointer;
+        }
+        .val-badge { background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; font-size: 10px; min-width: 25px; text-align: center;}
+
+        /* Bottom Row: Actions */
+        .action-row { display: flex; justify-content: center; gap: 15px; }
+        .action-btn {
+            background: rgba(0,0,0,0.2); border: 1px solid var(--panel-border);
+            color: var(--text-muted); width: 60px; height: 45px;
+            border-radius: 14px; display: flex; justify-content: center; align-items: center;
+            font-size: 16px; cursor: pointer; transition: 0.2s;
+        }
+        .action-btn:active { transform: scale(0.95); }
+        .action-btn.primary {
+            background: var(--purple-primary); color: #fff;
+            border: none; box-shadow: 0 4px 15px var(--purple-glow);
+            width: 80px;
+        }
+
+        /* Hide Original Select but keep it in DOM for JS */
+        #toolSelect { display: none; }
+
         /* Comments & Dialogs */
-        #comments-wrapper { position: absolute; top: 15px; right: 15px; width: 220px; z-index: 15; pointer-events: none; }
+        #comments-wrapper { position: absolute; top: 60px; right: 15px; width: 200px; z-index: 15; pointer-events: none; }
         #comments-container { display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
-        .comment { background: rgba(0,0,0,0.75); color: #fff; padding: 8px 12px; border-radius: 12px; font-size: 14px; word-wrap: break-word; animation: fadeIn 0.3s; backdrop-filter: blur(4px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        .comment b { color: #feca57; }
+        .comment { background: rgba(0,0,0,0.75); color: #fff; padding: 8px 12px; border-radius: 12px; font-size: 12px; word-wrap: break-word; animation: fadeIn 0.3s; backdrop-filter: blur(4px); }
+        .comment b { color: var(--purple-primary); }
         @keyframes fadeIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 
-        #dialog-overlay { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:110; backdrop-filter: blur(2px); }
-        #word-dialog { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:#2c3e50; padding:20px; border-radius:15px; z-index:120; color:white; width: 85%; max-width: 320px; box-sizing: border-box; font-family: sans-serif; box-shadow:0 10px 40px rgba(0,0,0,0.6); }
+        #dialog-overlay, #viewer-overlay, #win-overlay { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:110; box-sizing: border-box; }
+        #dialog-overlay { background:rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+        #viewer-overlay { background: #ff4757; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 18px; align-items: center; justify-content: center; flex-direction: column; }
+        #win-overlay { background: rgba(124, 58, 237, 0.95); color: white; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; backdrop-filter: blur(8px); }
+        .win-btn { padding: 14px 28px; font-size: 16px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); margin: 5px;}
+        
+        #word-dialog { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:var(--panel-bg); border: 1px solid var(--panel-border); padding:24px; border-radius:20px; z-index:120; color:white; width: 85%; max-width: 320px; box-sizing: border-box; box-shadow:0 10px 40px rgba(0,0,0,0.8); }
         .dialog-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-        .dialog-title { margin: 0; font-size: 18px; font-weight: bold; text-align: left; line-height: 1.4; }
-        .dialog-title span { color: #f1c40f; font-size: 24px; display: block; margin-top: 5px; }
-        #closeDialogBtn { background: transparent; border: none; color: #aaa; font-size: 24px; font-weight: bold; padding: 0; margin-top: -5px; cursor: pointer; width: auto; box-shadow: none; }
-        #closeDialogBtn:active { color: white; transform: scale(0.9); }
-        
-        #word-dialog button.action-btn { cursor: pointer; border: none; font-weight: bold; border-radius: 8px; padding: 12px 20px; width: 100%; margin-bottom: 10px; font-size: 16px; color: white; transition: 0.2s; text-align: center; }
-        #word-dialog button.action-btn:active { transform: scale(0.97); }
-        #nextWordBtn { background: #3498db; }
-        #writeWordBtn { background: #2ecc71; margin-bottom: 0; }
-        
+        .dialog-title { margin: 0; font-size: 14px; font-weight: 600; text-align: left; color: var(--text-muted); }
+        .dialog-title span { color: #fff; font-size: 28px; font-weight: 700; display: block; margin-top: 5px; }
+        #closeDialogBtn { background: transparent; border: none; color: var(--text-muted); font-size: 20px; padding: 0; cursor: pointer; }
+        #word-dialog button.action-btn-lg { cursor: pointer; border: none; font-weight: bold; border-radius: 12px; padding: 14px; width: 100%; margin-bottom: 10px; font-size: 15px; color: white; background: rgba(255,255,255,0.1); transition: 0.2s;}
+        #nextWordBtn { background: var(--purple-primary) !important; box-shadow: 0 4px 15px var(--purple-glow); }
         #word-input-container { display: none; }
-        #customWordInput { width: 100%; padding: 12px; border-radius: 8px; border: none; box-sizing: border-box; margin-bottom: 15px; font-size: 16px; outline: none; text-align: center; color: #333; }
-        #saveCustomWordBtn { background: #e67e22; margin-bottom: 0; }
-        
-        /* Mobile specific adjustments to ensure toolbar stays accessible */
-        @media (max-width: 768px) {
-            #toolbar {
-                position: fixed; bottom: 0; left: 0; top: auto; transform: none;
-                flex-direction: row; width: 100vw; border-radius: 16px 16px 0 0;
-                padding: 10px; overflow-x: auto; gap: 10px; height: 80px; align-items: center;
-            }
-            #palette { border-bottom: none; border-right: 1px solid rgba(0,0,0,0.1); padding-bottom: 0; padding-right: 10px; flex-direction: row; }
-            button, select, input[type="range"] { width: auto; white-space: nowrap; }
-            .nav-right .photo-btn:not(.primary) { display: none; } /* hide some extra buttons on small screens */
-        }
+        #customWordInput { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--panel-border); background: #000; box-sizing: border-box; margin-bottom: 15px; font-size: 16px; color: #fff; text-align: center;}
+        #saveCustomWordBtn { background: #10b981 !important; }
     </style>
 </head>
 <body>
     
-    <header id="main-header">
-        <div class="nav-left">
-            <i class="fas fa-magic"></i>
-            <span style="display: none;">WispDraw Pro</span> <div id="top-bar" onclick="openWordDialog()">
-                Your word: &nbsp;<span id="current-word-display" style="color:#feca57;">Loading...</span> &nbsp;⚙️
-            </div>
+    <header id="header-nav">
+        <button class="icon-btn-dark"><i class="fas fa-arrow-left"></i></button>
+        
+        <div id="top-bar" onclick="openWordDialog()">
+            <h1>DRAW & GUESS</h1>
+            <div class="word-badge">WORD: <span id="current-word-display">Loading...</span></div>
         </div>
 
-        <div class="nav-right">
-            <button class="photo-btn" id="downloadVisualBtn"><i class="fas fa-download"></i> Download</button>
+        <div style="display: flex; gap: 8px;">
+            <button class="icon-btn-dark"><i class="fas fa-cog"></i></button>
+            <button class="icon-btn-dark"><i class="fas fa-ellipsis-v"></i></button>
         </div>
     </header>
 
@@ -155,16 +268,16 @@
     <div id="word-dialog">
         <div class="dialog-header">
             <div class="dialog-title">Your word: <br><span id="dialog-word-text">Loading...</span></div>
-            <button id="closeDialogBtn" onclick="closeWordDialog()">✖</button>
+            <button id="closeDialogBtn" onclick="closeWordDialog()"><i class="fas fa-times"></i></button>
         </div>
         <div id="word-buttons">
-            <button id="nextWordBtn" class="action-btn">Next Word ⏭️</button>
-            <button id="writeWordBtn" class="action-btn">Write Custom Word ✍️</button>
+            <button id="nextWordBtn" class="action-btn-lg">Next Word ⏭️</button>
+            <button id="writeWordBtn" class="action-btn-lg">Write Custom Word ✍️</button>
         </div>
         <div id="word-input-container">
-            <p style="margin:0 0 10px 0; font-size:15px; color:#ddd; text-align:left;">Write your word here:</p>
+            <p style="margin:0 0 10px 0; font-size:13px; color:var(--text-muted); text-align:left;">Write your word here:</p>
             <input type="text" id="customWordInput" placeholder="Type a word...">
-            <button id="saveCustomWordBtn" class="action-btn">Set Word</button>
+            <button id="saveCustomWordBtn" class="action-btn-lg">Set Word</button>
         </div>
     </div>
 
@@ -176,58 +289,130 @@
     <div id="win-overlay">
         <p id="win-text" style="font-size: 28px; margin: 20px 0; font-weight: bold; line-height: 1.4; text-shadow: 0 2px 4px rgba(0,0,0,0.2);"></p>
         <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-            <button id="keepDrawingBtn" class="win-btn" style="background: white; color: #3498db;">Keep drawing</button>
+            <button id="keepDrawingBtn" class="win-btn" style="background: white; color: var(--purple-primary);">Keep drawing</button>
             <button id="closeCanvasBtn" class="win-btn" style="background: #e74c3c; color: white;">Close Canvas</button>
         </div>
     </div>
 
     <div id="app-body">
         
-        <div id="toolbar">
-            <div id="palette">
-                <span style="font-size: 11px; color: #666; font-weight: bold; text-transform: uppercase;">Color</span>
-                <div class="color-wheel-wrapper" title="Choose Color">
-                    <input type="color" id="colorPicker" value="#000000">
-                </div>
-            </div>
-            
-            <div style="display: flex; flex-direction: column; gap: 5px;">
-                <span style="font-size: 11px; color: #666; font-weight: bold; text-transform: uppercase;">Size</span>
-                <input type="range" id="brushSize" min="1" max="50" value="5">
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 5px;">
-                <span style="font-size: 11px; color: #666; font-weight: bold; text-transform: uppercase;">Tool</span>
-                <select id="toolSelect">
-                    <option value="solid">🖌️ Solid Brush</option>
-                    <option value="fill">🪣 Fill Color</option>
-                    <option value="airbrush">💨 Airbrush</option>
-                    <option value="velvet">🖍️ Velvet</option>
-                    <option value="wet">🖌️ Wet Brush</option>
-                    <option value="spray">💨 Spray</option>
-                    <option value="eraser">🧽 Eraser</option>
-                    <option value="line">📏 Line</option>
-                    <option value="rect">🔲 Rectangle</option>
-                    <option value="circle">⭕ Circle</option>
-                </select>
-            </div>
-            
-            <div style="flex: 1;"></div> <button id="undoBtn">↩️ Undo</button>
-            <button id="redoBtn">↪️ Redo</button>
-            <button id="clearBtn">🗑️ Clear</button>
-        </div>
-
         <div id="canvas-container">
+            <button id="toggleCommentsBtn" class="floating-btn">
+                <i class="fas fa-eye"></i> Hide
+            </button>
+            
+            <button id="clearBtn" class="floating-btn">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+
             <canvas id="board"></canvas>
+            
             <div id="comments-wrapper">
-                <div style="display: flex; justify-content: flex-end; pointer-events: auto; margin-bottom: 5px;">
-                    <button id="toggleCommentsBtn" style="padding: 6px 10px; border-radius: 8px; background: rgba(0,0,0,0.6); color: white; border: none; font-size: 12px; cursor: pointer; backdrop-filter: blur(4px);">🔽 Hide</button>
-                </div>
                 <div id="comments-container"></div> 
             </div>
         </div>
 
     </div>
+
+    <div id="toolbar">
+        <div class="tool-tabs">
+            <button class="tab-btn active" data-tool="solid"><i class="fas fa-paint-brush"></i></button>
+            <button class="tab-btn" data-tool="eraser"><i class="fas fa-eraser"></i></button>
+            <button class="tab-btn" data-tool="spray"><div class="color-ring"></div></button>
+            <button class="tab-btn" data-tool="rect"><i class="far fa-object-group"></i></button>
+        </div>
+
+        <select id="toolSelect">
+            <option value="solid" selected>🖌️ Solid Brush</option>
+            <option value="fill">🪣 Fill Color</option>
+            <option value="airbrush">💨 Airbrush</option>
+            <option value="velvet">🖍️ Velvet</option>
+            <option value="wet">🖌️ Wet Brush</option>
+            <option value="spray">💨 Spray</option>
+            <option value="eraser">🧽 Eraser</option>
+            <option value="line">📏 Line</option>
+            <option value="rect">🔲 Rectangle</option>
+            <option value="circle">⭕ Circle</option>
+        </select>
+
+        <div class="settings-box">
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div class="color-wheel-wrapper">
+                    <input type="color" id="colorPicker" value="#000000">
+                </div>
+                <div class="recent-colors">
+                    <span>RECENT COLORS</span>
+                    <div class="swatch-row">
+                        <div class="swatch" style="background: #000;"></div>
+                        <div class="swatch" style="background: #fff;"></div>
+                        <div class="swatch" style="background: #ef4444;"></div>
+                        <div class="swatch" style="background: #3b82f6;"></div>
+                        <div class="swatch" style="background: #22c55e;"></div>
+                        <div class="swatch add">+</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sliders">
+                <div class="slider-row">
+                    <i class="fas fa-paint-brush"></i>
+                    <input type="range" id="brushSize" min="1" max="50" value="12">
+                    <span class="val-badge" id="brushSizeVal">12px</span>
+                </div>
+                <div class="slider-row">
+                    <i class="fas fa-chess-board"></i>
+                    <input type="range" id="visualOpacity" min="1" max="100" value="100">
+                    <span class="val-badge" id="opacityVal">100%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-row">
+            <button id="undoBtn" class="action-btn"><i class="fas fa-undo"></i></button>
+            <button id="redoBtn" class="action-btn"><i class="fas fa-redo"></i></button>
+            <button id="downloadBtn" class="action-btn primary"><i class="fas fa-download"></i></button>
+        </div>
+    </div>
+
+
+    <script>
+        // Connect the visual tabs to your hidden toolSelect
+        document.querySelectorAll('.tab-btn[data-tool]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                
+                const tool = e.currentTarget.getAttribute('data-tool');
+                const select = document.getElementById('toolSelect');
+                select.value = tool;
+                select.dispatchEvent(new Event('change'));
+            });
+        });
+
+        // Update visual text for brush size
+        const sizeSlider = document.getElementById('brushSize');
+        const sizeVal = document.getElementById('brushSizeVal');
+        sizeSlider.addEventListener('input', (e) => {
+            sizeVal.textContent = e.target.value + 'px';
+        });
+
+        // Update visual text for opacity (Visual only, doesn't break JS)
+        const opSlider = document.getElementById('visualOpacity');
+        const opVal = document.getElementById('opacityVal');
+        opSlider.addEventListener('input', (e) => {
+            opVal.textContent = e.target.value + '%';
+        });
+
+        // Toggle comments text
+        const toggleBtn = document.getElementById('toggleCommentsBtn');
+        toggleBtn.addEventListener('click', () => {
+            if (toggleBtn.innerHTML.includes('Hide')) {
+                toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i> Show';
+            } else {
+                toggleBtn.innerHTML = '<i class="fas fa-eye"></i> Hide';
+            }
+        });
+    </script>
 
     <script>
         // ----------------------------------------------------
@@ -252,7 +437,7 @@
             document.getElementById('toolbar').style.display = 'none';
             document.getElementById('canvas-container').style.display = 'none';
             document.getElementById('status-bar').style.display = 'none';
-            document.getElementById('main-header').style.display = 'none'; // Updated to hide new header
+            document.getElementById('header-nav').style.display = 'none'; 
             const overlay = document.getElementById('viewer-overlay');
             overlay.style.display = 'flex';
             overlay.style.background = '#1e1e24';
@@ -344,7 +529,6 @@
         document.getElementById('toggleCommentsBtn').onclick = (e) => {
             commentsVisible = !commentsVisible;
             document.getElementById('comments-container').style.display = commentsVisible ? 'flex' : 'none';
-            e.target.innerText = commentsVisible ? '🔽 Hide' : '🔼 Show';
         };
 
         document.getElementById('colorPicker').addEventListener('input', () => {
@@ -658,7 +842,6 @@
 
             let lastCanvasData = ""; 
             
-            // --- UPDATED LOGIC HERE ---
             function updateTelegramCanvas() {
                 if (!gameIsActive && !keepDrawing) return; 
                 if (!window.TG_BOT_TOKEN) return;
@@ -691,7 +874,6 @@
                                     localStorage.removeItem(photoKey);
                                     lastCanvasData = ""; 
                                 } else if (res.error_code === 429) {
-                                    // Rate limit hit, allow retrying on next cycle
                                     lastCanvasData = "";
                                 }
                             }
@@ -726,13 +908,11 @@
                 }
             }
 
-            // Increased interval to 30 seconds to bypass strict Telegram limits
             updatePhotoInterval = setInterval(updateTelegramCanvas, 30000); 
 
-            // Handle browser throttling / minimizing 
             document.addEventListener("visibilitychange", () => {
                 if (document.visibilityState === 'visible') {
-                    updateTelegramCanvas(); // Immediately sync image when returning to tab
+                    updateTelegramCanvas(); 
                 }
             });
         }
