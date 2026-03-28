@@ -373,8 +373,9 @@
 
     <div id="brushMenu">
         <div class="menu-item active" data-brush="solid"><i class="fas fa-paint-brush"></i> Solid Brush</div>
+        <div class="menu-item" data-brush="ink"><i class="fas fa-pen-nib"></i> Ink Pen</div>
+        <div class="menu-item" data-brush="watercolor"><i class="fas fa-tint"></i> Watercolor</div>
         <div class="menu-item" data-brush="airbrush"><i class="fas fa-spray-can"></i> Airbrush</div>
-        <div class="menu-item" data-brush="glow"><i class="fas fa-magic"></i> Glow Brush</div>
         <div class="menu-item" data-brush="spray"><i class="fas fa-braille"></i> Spray Paint</div>
         <div class="menu-item" data-brush="fill"><i class="fas fa-fill-drip"></i> Fill Bucket</div>
         <div style="border-top: 1px solid var(--panel-border); margin: 4px 0;"></div>
@@ -395,10 +396,11 @@
 
         <select id="toolSelect">
             <option value="solid" selected>🖌️ Solid Brush</option>
-            <option value="fill">🪣 Fill Color</option>
+            <option value="ink">✒️ Ink Pen</option>
+            <option value="watercolor">💧 Watercolor</option>
             <option value="airbrush">💨 Airbrush</option>
-            <option value="glow">🌟 Glow</option>
             <option value="spray">💨 Spray</option>
+            <option value="fill">🪣 Fill Color</option>
             <option value="eraser">🧽 Eraser</option>
             <option value="line">📏 Line</option>
             <option value="rect">🔲 Rectangle</option>
@@ -1325,7 +1327,7 @@
                         strokeCtx.globalAlpha = Math.random() * 0.6 + 0.2;
                         strokeCtx.fillRect(px, py, 1.5, 1.5);
                     }
-                } else if (['solid', 'airbrush', 'eraser', 'glow'].includes(tool)) {
+                } else if (['solid', 'airbrush', 'eraser', 'ink', 'watercolor'].includes(tool)) {
                     let color = tool === 'eraser' ? 'white' : document.getElementById('colorPicker').value;
                     let size = document.getElementById('brushSize').value * dpr;
                     
@@ -1336,9 +1338,9 @@
                     strokeCtx.lineJoin = 'round';
                     strokeCtx.shadowBlur = 0;
 
-                    if (tool === 'glow') {
-                        strokeCtx.globalAlpha = 1.0;
-                        strokeCtx.shadowBlur = size * 2;
+                    if (tool === 'watercolor') {
+                        strokeCtx.globalAlpha = 0.1;
+                        strokeCtx.shadowBlur = size;
                         strokeCtx.shadowColor = color;
                     } else {
                         strokeCtx.globalAlpha = 1.0;
@@ -1364,18 +1366,9 @@
 
                 strokeCtx.strokeStyle = color;
                 strokeCtx.fillStyle = color;
-                strokeCtx.lineWidth = size;
                 strokeCtx.lineCap = 'round';
                 strokeCtx.lineJoin = 'round';
                 strokeCtx.shadowBlur = 0;
-
-                if (tool === 'glow') {
-                    strokeCtx.globalAlpha = 1.0;
-                    strokeCtx.shadowBlur = size * 2;
-                    strokeCtx.shadowColor = color;
-                } else {
-                    strokeCtx.globalAlpha = 1.0;
-                }
 
                 const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
                 
@@ -1395,9 +1388,50 @@
                             strokeCtx.fillRect(px, py, 1.5, 1.5);
                         }
                         lastX = currentX; lastY = currentY;
-                    } else if (['solid', 'airbrush', 'eraser', 'glow'].includes(tool)) {
+                    } else if (tool === 'ink') {
                         const midX = (lastX + currentX) / 2;
                         const midY = (lastY + currentY) / 2;
+                        
+                        // Calculate pointer speed to adjust stroke width dynamically
+                        let dist = Math.hypot(currentX - lastX, currentY - lastY);
+                        let dynamicSize = Math.max(size * 0.2, size - dist * 0.2);
+                        
+                        strokeCtx.lineWidth = dynamicSize;
+                        strokeCtx.globalAlpha = 1.0;
+                        
+                        strokeCtx.beginPath();
+                        strokeCtx.moveTo(prevMidX, prevMidY);
+                        strokeCtx.quadraticCurveTo(lastX, lastY, midX, midY);
+                        strokeCtx.stroke(); 
+                        
+                        prevMidX = midX; prevMidY = midY; lastX = currentX; lastY = currentY;
+                    } else if (tool === 'watercolor') {
+                        const midX = (lastX + currentX) / 2;
+                        const midY = (lastY + currentY) / 2;
+                        
+                        // Base diffuse edge
+                        strokeCtx.lineWidth = size;
+                        strokeCtx.globalAlpha = 0.05;
+                        strokeCtx.shadowBlur = size;
+                        strokeCtx.shadowColor = color;
+                        
+                        strokeCtx.beginPath();
+                        strokeCtx.moveTo(prevMidX, prevMidY);
+                        strokeCtx.quadraticCurveTo(lastX, lastY, midX, midY);
+                        strokeCtx.stroke(); 
+                        
+                        // Inner saturated core
+                        strokeCtx.lineWidth = size * 0.6;
+                        strokeCtx.globalAlpha = 0.1;
+                        strokeCtx.stroke(); 
+                        
+                        prevMidX = midX; prevMidY = midY; lastX = currentX; lastY = currentY;
+                    } else if (['solid', 'airbrush', 'eraser'].includes(tool)) {
+                        const midX = (lastX + currentX) / 2;
+                        const midY = (lastY + currentY) / 2;
+                        
+                        strokeCtx.lineWidth = size;
+                        strokeCtx.globalAlpha = 1.0;
 
                         strokeCtx.beginPath();
                         strokeCtx.moveTo(prevMidX, prevMidY);
@@ -1418,6 +1452,7 @@
                     const currentX = (finalEv.clientX - rect.left) * (canvas.width / rect.width);
                     const currentY = (finalEv.clientY - rect.top) * (canvas.height / rect.height);
                     
+                    strokeCtx.lineWidth = size;
                     strokeCtx.clearRect(0, 0, canvas.width, canvas.height); 
                     strokeCtx.beginPath();
                     if (tool === 'line') { strokeCtx.moveTo(startX, startY); strokeCtx.lineTo(currentX, currentY); strokeCtx.stroke(); }
@@ -1433,7 +1468,7 @@
                     let tool = document.getElementById('toolSelect').value;
                     let baseAlpha = document.getElementById('visualOpacity').value / 100;
                     
-                    if (['solid', 'airbrush', 'eraser', 'glow'].includes(tool)) {
+                    if (['solid', 'airbrush', 'eraser', 'ink', 'watercolor'].includes(tool)) {
                         strokeCtx.beginPath();
                         strokeCtx.moveTo(prevMidX, prevMidY);
                         strokeCtx.lineTo(lastX, lastY);
