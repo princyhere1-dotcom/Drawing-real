@@ -170,11 +170,11 @@
             -webkit-mask-composite: xor; mask-composite: exclude;
         }
 
-        /* Long Press Brush Menu */
+        /* Tool Selection Menu */
         #brushMenu {
             position: absolute;
             bottom: 70px; /* Spawns directly above toolbar */
-            left: 20px;
+            right: 0px; /* Aligned to right side (shapes button) */
             background: var(--panel-bg);
             border: 1px solid var(--panel-border);
             border-radius: 16px;
@@ -184,6 +184,13 @@
             opacity: 0; pointer-events: none;
             transition: 0.2s; transform: translateY(10px);
             z-index: 100;
+            max-height: 220px;
+            overflow-y: auto;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+        #brushMenu::-webkit-scrollbar {
+            display: none; /* Chrome/Safari */
         }
         #brushMenu.show {
             opacity: 1; pointer-events: auto; transform: translateY(0);
@@ -194,6 +201,7 @@
             cursor: pointer; display: flex; align-items: center; gap: 12px;
             transition: 0.2s; white-space: nowrap;
         }
+        .menu-item i { width: 16px; text-align: center; }
         .menu-item:hover, .menu-item.active {
             background: rgba(124, 58, 237, 0.1); color: var(--text-light);
         }
@@ -363,18 +371,23 @@
     </div>
 
     <div id="brushMenu">
-        <div class="menu-item active" data-brush="solid"><i class="fas fa-paint-brush"></i> Solid</div>
+        <div class="menu-item active" data-brush="solid"><i class="fas fa-paint-brush"></i> Solid Brush</div>
         <div class="menu-item" data-brush="airbrush"><i class="fas fa-spray-can"></i> Airbrush</div>
-        <div class="menu-item" data-brush="velvet"><i class="fas fa-marker"></i> Velvet</div>
+        <div class="menu-item" data-brush="velvet"><i class="fas fa-marker"></i> Velvet Marker</div>
         <div class="menu-item" data-brush="wet"><i class="fas fa-tint"></i> Wet Brush</div>
+        <div class="menu-item" data-brush="fill"><i class="fas fa-fill-drip"></i> Fill Bucket</div>
+        <div style="border-top: 1px solid var(--panel-border); margin: 4px 0;"></div>
+        <div class="menu-item" data-brush="line"><i class="fas fa-minus"></i> Line</div>
+        <div class="menu-item" data-brush="rect"><i class="far fa-square"></i> Rectangle</div>
+        <div class="menu-item" data-brush="circle"><i class="far fa-circle"></i> Circle</div>
     </div>
 
     <div id="toolbar">
         <div class="tool-tabs">
-            <button class="tab-btn active" id="mainBrushBtn" data-tool="solid"><i class="fas fa-paint-brush"></i></button>
+            <button class="tab-btn active" id="mainBrushBtn"><i class="fas fa-paint-brush"></i></button>
             <button class="tab-btn" data-tool="eraser"><i class="fas fa-eraser"></i></button>
             <button class="tab-btn" data-tool="spray"><div class="color-ring"></div></button>
-            <button class="tab-btn" data-tool="rect"><i class="far fa-object-group"></i></button>
+            <button class="tab-btn" id="openMenuBtn"><i class="far fa-object-group"></i></button>
         </div>
 
         <select id="toolSelect">
@@ -435,46 +448,31 @@
 
 
     <script>
-        // --- 1. LONG PRESS BRUSH MENU LOGIC ---
+        // --- 1. NEW MENU TOGGLE LOGIC ---
         const brushTab = document.getElementById('mainBrushBtn');
+        const menuBtn = document.getElementById('openMenuBtn');
         const brushMenu = document.getElementById('brushMenu');
-        let pressTimer;
-        let isPressing = false;
         let currentBrushType = 'solid';
 
-        const showMenu = () => {
-            brushMenu.classList.add('show');
-            if (navigator.vibrate) navigator.vibrate(50);
-        };
+        // 4th Button clicks to toggle the menu
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            brushMenu.classList.toggle('show');
+        });
 
-        const startPress = (e) => {
-            isPressing = true;
-            pressTimer = setTimeout(showMenu, 1500); // Trigger after 1.5 seconds
-        };
-
-        const cancelPress = () => {
-            if (!isPressing) return;
-            isPressing = false;
-            clearTimeout(pressTimer);
-        };
-
-        brushTab.addEventListener('mousedown', startPress);
-        brushTab.addEventListener('touchstart', startPress);
-        brushTab.addEventListener('mouseup', cancelPress);
-        brushTab.addEventListener('mouseleave', cancelPress);
-        brushTab.addEventListener('touchend', cancelPress);
-
-        // Standard click for brush icon to activate last used brush
+        // Main Brush Icon (1st Button) purely selects the active brush type
         brushTab.addEventListener('click', () => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             brushTab.classList.add('active');
+            
             const select = document.getElementById('toolSelect');
             select.value = currentBrushType;
             select.dispatchEvent(new Event('change'));
+            brushMenu.classList.remove('show');
         });
 
-        // Other generic tabs logic
-        document.querySelectorAll('.tab-btn:not(#mainBrushBtn)').forEach(btn => {
+        // Click logic for the middle generic tabs (Eraser, Spray)
+        document.querySelectorAll('.tab-btn[data-tool]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 e.currentTarget.classList.add('active');
@@ -483,10 +481,11 @@
                 const select = document.getElementById('toolSelect');
                 select.value = tool;
                 select.dispatchEvent(new Event('change'));
+                brushMenu.classList.remove('show');
             });
         });
 
-        // Menu selection logic
+        // Click logic for items inside the popup menu
         document.querySelectorAll('.menu-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 currentBrushType = e.currentTarget.getAttribute('data-brush');
@@ -494,19 +493,20 @@
                 select.value = currentBrushType;
                 select.dispatchEvent(new Event('change'));
                 
+                // Set UI state for menu item
                 document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
                 e.currentTarget.classList.add('active');
                 brushMenu.classList.remove('show');
                 
-                // Set icon active
+                // Immediately active the 1st brush tab to reflect the chosen tool
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 brushTab.classList.add('active');
             });
         });
 
-        // Close menu if click outside
+        // Close menu if clicking outside
         document.addEventListener('click', (e) => {
-            if(!brushTab.contains(e.target) && !brushMenu.contains(e.target)) {
+            if(!menuBtn.contains(e.target) && !brushMenu.contains(e.target)) {
                 brushMenu.classList.remove('show');
             }
         });
