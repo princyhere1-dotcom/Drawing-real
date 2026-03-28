@@ -97,7 +97,7 @@
         
         canvas { 
             position: absolute; top: 0; left: 0; 
-            width: 100% !important; height: 100% !important; /* Locks to container sizing */
+            width: 100% !important; height: 100% !important; 
             transform-origin: top left; touch-action: none; 
         }
         
@@ -173,8 +173,8 @@
         /* Tool Selection Menu */
         #brushMenu {
             position: absolute;
-            bottom: 70px; /* Spawns directly above toolbar */
-            right: 0px; /* Aligned to right side (shapes button) */
+            bottom: 70px; 
+            right: 0px; 
             background: var(--panel-bg);
             border: 1px solid var(--panel-border);
             border-radius: 16px;
@@ -186,15 +186,11 @@
             z-index: 100;
             max-height: 220px;
             overflow-y: auto;
-            scrollbar-width: none; /* Firefox */
-            -ms-overflow-style: none; /* IE/Edge */
+            scrollbar-width: none; 
+            -ms-overflow-style: none; 
         }
-        #brushMenu::-webkit-scrollbar {
-            display: none; /* Chrome/Safari */
-        }
-        #brushMenu.show {
-            opacity: 1; pointer-events: auto; transform: translateY(0);
-        }
+        #brushMenu::-webkit-scrollbar { display: none; }
+        #brushMenu.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
         .menu-item {
             padding: 12px 18px; border-radius: 10px;
             color: var(--text-muted); font-size: 14px; font-weight: 500;
@@ -202,8 +198,33 @@
             transition: 0.2s; white-space: nowrap;
         }
         .menu-item i { width: 16px; text-align: center; }
-        .menu-item:hover, .menu-item.active {
-            background: rgba(124, 58, 237, 0.1); color: var(--text-light);
+        .menu-item:hover, .menu-item.active { background: rgba(124, 58, 237, 0.1); color: var(--text-light); }
+
+        /* Big Color Wheel Overlay (NEW) */
+        #colorWheelOverlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+            z-index: 150; display: none; justify-content: center; align-items: center;
+        }
+        #colorWheelOverlay.show { display: flex; }
+        .wheel-popup {
+            background: var(--panel-bg); border: 1px solid var(--panel-border);
+            padding: 24px; border-radius: 28px;
+            display: flex; flex-direction: column; align-items: center; gap: 20px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.8);
+        }
+        .custom-wheel-container-large {
+            position: relative; width: 280px; height: 280px; border-radius: 50%;
+            box-shadow: inset 0 0 0 4px #000, 0 0 20px rgba(0,0,0,0.5); 
+            touch-action: none; cursor: crosshair;
+        }
+        #uiColorWheelLarge { width: 100%; height: 100%; border-radius: 50%; display: block; }
+        #wheelThumbLarge {
+            position: absolute; width: 18px; height: 18px; border-radius: 50%;
+            border: 3px solid #ffffff; background: #000000;
+            box-shadow: 0 0 6px rgba(0,0,0,0.8);
+            transform: translate(-50%, -50%); pointer-events: none;
+            top: 50%; left: 50%;
         }
 
         /* Middle Row: Settings Box */
@@ -214,44 +235,18 @@
             display: flex; align-items: center; gap: 15px;
         }
         
-        /* Custom Interactive Color Wheel */
-        .custom-wheel-container {
-            position: relative;
-            width: 70px; height: 70px;
-            border-radius: 50%;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
-            touch-action: none; 
-            cursor: crosshair;
-        }
-        #uiColorWheel {
-            width: 100%; height: 100%;
-            border-radius: 50%; display: block;
-        }
-        #wheelThumb {
-            position: absolute;
-            width: 14px; height: 14px;
-            border-radius: 50%;
-            border: 2px solid #ffffff;
-            background: #000000;
-            box-shadow: 0 0 4px rgba(0,0,0,0.8);
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            top: 50%; left: 50%;
-        }
-
-        .recent-colors { display: flex; flex-direction: column; gap: 5px; }
+        .recent-colors { display: flex; flex-direction: column; gap: 5px; margin-right: 10px; }
         .recent-colors span { font-size: 8px; font-weight: 700; color: var(--text-muted); letter-spacing: 1px; }
-        .swatch-row { display: flex; gap: 5px; align-items: center; }
-        .swatch { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: 0.1s;}
+        .swatch-row { display: flex; gap: 6px; align-items: center; }
+        .swatch { width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: 0.1s;}
         .swatch:active { transform: scale(0.9); }
-        .swatch.add { display:flex; justify-content:center; align-items:center; background: rgba(255,255,255,0.1); font-size: 10px; color: #fff;}
+        .swatch.active-color { border: 2px solid var(--purple-primary); box-shadow: 0 0 8px var(--purple-glow); width: 22px; height: 22px; pointer-events: none;}
 
-        .sliders { flex: 1; display: flex; flex-direction: column; gap: 12px; padding-left: 10px; border-left: 1px solid var(--panel-border); }
+        .sliders { flex: 1; display: flex; flex-direction: column; gap: 12px; padding-left: 15px; border-left: 1px solid var(--panel-border); }
         .slider-row { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 12px;}
         input[type="range"] {
             flex: 1; height: 4px; border-radius: 2px;
-            background: var(--panel-border); outline: none;
-            -webkit-appearance: none;
+            background: var(--panel-border); outline: none; -webkit-appearance: none;
         }
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
@@ -269,13 +264,9 @@
             font-size: 16px; cursor: pointer; transition: 0.2s;
         }
         .action-btn:active { transform: scale(0.95); }
-        .action-btn.primary {
-            background: var(--purple-primary); color: #fff;
-            border: none; box-shadow: 0 4px 15px var(--purple-glow);
-            width: 80px;
-        }
+        .action-btn.primary { background: var(--purple-primary); color: #fff; border: none; box-shadow: 0 4px 15px var(--purple-glow); width: 80px; }
 
-        /* Hide Original Select but keep it in DOM for JS */
+        /* Hidden Inputs */
         #toolSelect { display: none; }
         #colorPicker { display: none; }
 
@@ -339,6 +330,16 @@
         </div>
     </div>
 
+    <div id="colorWheelOverlay">
+        <div class="wheel-popup" id="wheelPopupContent">
+            <div class="custom-wheel-container-large">
+                <canvas id="uiColorWheelLarge" width="280" height="280"></canvas>
+                <div id="wheelThumbLarge"></div>
+            </div>
+            <button id="closeColorWheelBtn" style="background: var(--purple-primary); color: white; border: none; border-radius: 12px; padding: 12px 0; width: 100%; font-weight: bold; font-size: 16px; cursor: pointer;">Done</button>
+        </div>
+    </div>
+
     <div id="viewer-overlay">
         <p>👁️ VIEWER MODE</p>
         <p>Watching live drawing...</p>
@@ -386,7 +387,9 @@
         <div class="tool-tabs">
             <button class="tab-btn active" id="mainBrushBtn"><i class="fas fa-paint-brush"></i></button>
             <button class="tab-btn" data-tool="eraser"><i class="fas fa-eraser"></i></button>
-            <button class="tab-btn" data-tool="spray"><div class="color-ring"></div></button>
+            
+            <button class="tab-btn" id="openColorWheelBtn"><div class="color-ring"></div></button>
+            
             <button class="tab-btn" id="openMenuBtn"><i class="far fa-object-group"></i></button>
         </div>
 
@@ -404,37 +407,31 @@
         </select>
 
         <div class="settings-box">
-            <div style="display: flex; gap: 15px; align-items: center;">
+            <div style="display: flex; gap: 15px; align-items: center; width: 100%;">
                 
-                <div class="custom-wheel-container">
-                    <canvas id="uiColorWheel" width="100" height="100"></canvas>
-                    <div id="wheelThumb"></div>
-                </div>
                 <input type="color" id="colorPicker" value="#000000">
 
                 <div class="recent-colors">
-                    <span>RECENT COLORS</span>
+                    <span>ACTIVE COLOR</span>
                     <div class="swatch-row">
-                        <div class="swatch" style="background: #000000;"></div>
+                        <div class="swatch active-color" id="currentActiveSwatch" style="background: #000000;"></div>
                         <div class="swatch" style="background: #ffffff;"></div>
                         <div class="swatch" style="background: #ef4444;"></div>
                         <div class="swatch" style="background: #3b82f6;"></div>
-                        <div class="swatch" style="background: #22c55e;"></div>
-                        <div class="swatch add">+</div>
                     </div>
                 </div>
-            </div>
             
-            <div class="sliders">
-                <div class="slider-row">
-                    <i class="fas fa-paint-brush"></i>
-                    <input type="range" id="brushSize" min="1" max="50" value="12">
-                    <span class="val-badge" id="brushSizeVal">12px</span>
-                </div>
-                <div class="slider-row">
-                    <i class="fas fa-chess-board"></i>
-                    <input type="range" id="visualOpacity" min="1" max="100" value="100">
-                    <span class="val-badge" id="opacityVal">100%</span>
+                <div class="sliders">
+                    <div class="slider-row">
+                        <i class="fas fa-paint-brush"></i>
+                        <input type="range" id="brushSize" min="1" max="50" value="12">
+                        <span class="val-badge" id="brushSizeVal">12px</span>
+                    </div>
+                    <div class="slider-row">
+                        <i class="fas fa-chess-board"></i>
+                        <input type="range" id="visualOpacity" min="1" max="100" value="100">
+                        <span class="val-badge" id="opacityVal">100%</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -446,21 +443,18 @@
         </div>
     </div>
 
-
     <script>
-        // --- 1. NEW MENU TOGGLE LOGIC ---
+        // --- MENU & BRUSH SELECTION LOGIC ---
         const brushTab = document.getElementById('mainBrushBtn');
         const menuBtn = document.getElementById('openMenuBtn');
         const brushMenu = document.getElementById('brushMenu');
         let currentBrushType = 'solid';
 
-        // 4th Button clicks to toggle the menu
         menuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             brushMenu.classList.toggle('show');
         });
 
-        // Main Brush Icon (1st Button) purely selects the active brush type
         brushTab.addEventListener('click', () => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             brushTab.classList.add('active');
@@ -471,7 +465,6 @@
             brushMenu.classList.remove('show');
         });
 
-        // Click logic for the middle generic tabs (Eraser, Spray)
         document.querySelectorAll('.tab-btn[data-tool]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -485,7 +478,6 @@
             });
         });
 
-        // Click logic for items inside the popup menu
         document.querySelectorAll('.menu-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 currentBrushType = e.currentTarget.getAttribute('data-brush');
@@ -493,26 +485,45 @@
                 select.value = currentBrushType;
                 select.dispatchEvent(new Event('change'));
                 
-                // Set UI state for menu item
                 document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
                 e.currentTarget.classList.add('active');
                 brushMenu.classList.remove('show');
                 
-                // Immediately active the 1st brush tab to reflect the chosen tool
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 brushTab.classList.add('active');
             });
         });
 
-        // Close menu if clicking outside
         document.addEventListener('click', (e) => {
             if(!menuBtn.contains(e.target) && !brushMenu.contains(e.target)) {
                 brushMenu.classList.remove('show');
             }
         });
 
-        // --- 2. CUSTOM COLOR WHEEL (BLACK CENTER -> COLOR EDGE) ---
-        const wCanvas = document.getElementById('uiColorWheel');
+        // --- BIG COLOR WHEEL OVERLAY LOGIC ---
+        const openColorWheelBtn = document.getElementById('openColorWheelBtn');
+        const colorWheelOverlay = document.getElementById('colorWheelOverlay');
+        const wheelPopupContent = document.getElementById('wheelPopupContent');
+        const closeColorWheelBtn = document.getElementById('closeColorWheelBtn');
+
+        openColorWheelBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Don't deselect the brush, just open the modal
+            colorWheelOverlay.classList.add('show');
+        });
+
+        closeColorWheelBtn.addEventListener('click', () => {
+            colorWheelOverlay.classList.remove('show');
+        });
+
+        // Close when clicking outside popup
+        colorWheelOverlay.addEventListener('click', (e) => {
+            if(!wheelPopupContent.contains(e.target)) {
+                colorWheelOverlay.classList.remove('show');
+            }
+        });
+
+        const wCanvas = document.getElementById('uiColorWheelLarge');
         const wCtx = wCanvas.getContext('2d');
         const wheelRadius = wCanvas.width / 2;
 
@@ -540,7 +551,7 @@
             return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
         }
 
-        // Draw wheel gradient
+        // Generate Color Wheel (0 Lightness at center = Black)
         for(let y=0; y<wCanvas.height; y++) {
             for(let x=0; x<wCanvas.width; x++) {
                 let dx = x - wheelRadius;
@@ -552,7 +563,7 @@
                     let angle = Math.atan2(dy, dx);
                     let h = (angle + Math.PI) / (2 * Math.PI); 
                     let s = 1.0;
-                    let l = (dist / wheelRadius) * 0.5; // 0 at center (Black), 0.5 at edge (Full Color)
+                    let l = (dist / wheelRadius) * 0.5; // Fades from Black (0) to Pure Color (0.5)
                     
                     let rgb = hslToRgb(h, s, l);
                     data[idx] = rgb[0];
@@ -560,7 +571,7 @@
                     data[idx+2] = rgb[2];
                     data[idx+3] = 255;
                 } else {
-                    data[idx+3] = 0; // Transparent
+                    data[idx+3] = 0; 
                 }
             }
         }
@@ -576,7 +587,6 @@
             let clientX = e.touches ? e.touches[0].clientX : e.clientX;
             let clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-            // Map interaction to canvas resolution
             let x = (clientX - rect.left) * (wCanvas.width / rect.width);
             let y = (clientY - rect.top) * (wCanvas.height / rect.height);
             
@@ -584,7 +594,6 @@
             let dy = y - wheelRadius;
             let dist = Math.sqrt(dx*dx + dy*dy);
             
-            // Clamp thumb to circle boundaries
             if(dist > wheelRadius) {
                 x = wheelRadius + (dx / dist) * wheelRadius;
                 y = wheelRadius + (dy / dist) * wheelRadius;
@@ -596,20 +605,17 @@
             const pixel = wCtx.getImageData(x, y, 1, 1).data;
             const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
             
-            // Apply color to hidden input
             document.getElementById('colorPicker').value = hex;
             
-            // Update visual thumb
-            const thumb = document.getElementById('wheelThumb');
+            const thumb = document.getElementById('wheelThumbLarge');
             thumb.style.left = (x / wCanvas.width * 100) + '%';
             thumb.style.top = (y / wCanvas.height * 100) + '%';
             thumb.style.backgroundColor = hex;
             
-            // Trigger actual app color update
+            document.getElementById('currentActiveSwatch').style.backgroundColor = hex;
             document.getElementById('colorPicker').dispatchEvent(new Event('input'));
         }
 
-        // Seamless drag selection for the color wheel
         wCanvas.addEventListener('pointerdown', (e) => {
             wCanvas.setPointerCapture(e.pointerId);
             handleWheelPick(e);
@@ -620,19 +626,19 @@
             wCanvas.releasePointerCapture(e.pointerId);
         });
 
-        // Swatch clicks support
-        document.querySelectorAll('.swatch:not(.add)').forEach(sw => {
+        // Sub swatches
+        document.querySelectorAll('.swatch:not(.active-color)').forEach(sw => {
             sw.addEventListener('click', (e) => {
                 let bg = e.target.style.background || e.target.style.backgroundColor;
                 let match = bg.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
                 let hex = match ? rgbToHex(parseInt(match[1]), parseInt(match[2]), parseInt(match[3])) : bg;
                 document.getElementById('colorPicker').value = hex;
                 document.getElementById('colorPicker').dispatchEvent(new Event('input'));
-                document.getElementById('wheelThumb').style.backgroundColor = hex;
+                document.getElementById('currentActiveSwatch').style.backgroundColor = hex;
             });
         });
 
-        // --- 3. MISC UI ELEMENTS ---
+        // --- MISC ---
         const sizeSlider = document.getElementById('brushSize');
         const sizeVal = document.getElementById('brushSizeVal');
         sizeSlider.addEventListener('input', (e) => {
