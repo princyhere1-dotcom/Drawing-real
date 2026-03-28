@@ -119,12 +119,6 @@
         }
         #toggleCommentsBtn i { font-size: 12px; }
         
-        #clearBtn {
-            bottom: 15px; right: 15px;
-            width: 36px; height: 36px;
-            color: #666;
-        }
-        
         /* Bottom Control Panel */
         #toolbar { 
             background: var(--panel-bg);
@@ -265,6 +259,8 @@
         }
         .action-btn:active { transform: scale(0.95); }
         .action-btn.primary { background: var(--purple-primary); color: #fff; border: none; box-shadow: 0 4px 15px var(--purple-glow); width: 80px; }
+        /* Style specifically for the new Clear button */
+        #clearBtnBottom { background: #ef4444; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
 
         /* Hidden Inputs */
         #toolSelect { display: none; }
@@ -359,10 +355,6 @@
                 <i class="fas fa-eye"></i> Hide
             </button>
             
-            <button id="clearBtn" class="floating-btn">
-                <i class="fas fa-trash-alt"></i>
-            </button>
-
             <canvas id="board"></canvas>
             
             <div id="comments-wrapper">
@@ -439,7 +431,7 @@
         <div class="action-row">
             <button id="undoBtn" class="action-btn"><i class="fas fa-undo"></i></button>
             <button id="redoBtn" class="action-btn"><i class="fas fa-redo"></i></button>
-            <button id="downloadBtn" class="action-btn primary"><i class="fas fa-download"></i></button>
+            <button id="clearBtnBottom" class="action-btn primary" title="Clear Canvas"><i class="fas fa-trash-alt"></i></button>
         </div>
     </div>
 
@@ -780,12 +772,19 @@
             if (tool === 'eraser') document.getElementById('toolSelect').value = 'solid';
         });
 
+        // FORCES 800x800 SQUARE RESOLUTION 
         const dpr = window.devicePixelRatio || 1;
         canvas.width = 800 * dpr;
         canvas.height = 800 * dpr;
         canvas.style.width = '100%';
         canvas.style.height = '100%';
         
+        // --- NEW: Separate Stroke Canvas for Smooth Opacity Compositing ---
+        let strokeCanvas = document.createElement('canvas');
+        strokeCanvas.width = canvas.width;
+        strokeCanvas.height = canvas.height;
+        let strokeCtx = strokeCanvas.getContext('2d');
+
         if (!isDrawer) {
             document.getElementById('toolbar').style.display = 'none';
             document.getElementById('viewer-overlay').style.display = 'flex';
@@ -812,6 +811,7 @@
                 let img = new Image();
                 img.src = saved;
                 img.onload = () => {
+                    ctx.globalAlpha = 1.0;
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                     history = [canvas.toDataURL()];
                     historyStep = 0;
@@ -831,7 +831,11 @@
             if(historyStep > 0 && (gameIsActive || keepDrawing)) {
                 historyStep--;
                 let img = new Image(); img.src = history[historyStep];
-                img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); }
+                img.onload = () => { 
+                    ctx.globalAlpha = 1.0; 
+                    ctx.clearRect(0, 0, canvas.width, canvas.height); 
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height); 
+                }
             }
         };
 
@@ -839,12 +843,23 @@
             if(historyStep < history.length - 1 && (gameIsActive || keepDrawing)) {
                 historyStep++;
                 let img = new Image(); img.src = history[historyStep];
-                img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); }
+                img.onload = () => { 
+                    ctx.globalAlpha = 1.0;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height); 
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height); 
+                }
             }
         };
         
-        document.getElementById('clearBtn').onclick = () => { 
-            if(gameIsActive || keepDrawing){ ctx.fillStyle = "white"; ctx.fillRect(0, 0, canvas.width, canvas.height); saveState(); }
+        // --- NEW: Bottom Clear Button Logic (Fixes Ghost Opacity) ---
+        document.getElementById('clearBtnBottom').onclick = () => { 
+            if(gameIsActive || keepDrawing){ 
+                ctx.globalAlpha = 1.0;
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillStyle = "white"; 
+                ctx.fillRect(0, 0, canvas.width, canvas.height); 
+                saveState(); 
+            }
         };
 
         function dataURLtoFile(dataurl, filename) {
@@ -1032,7 +1047,11 @@
         if (!isDrawer) {
             client.on('message', (topic, message) => {
                 let img = new Image(); img.src = message.toString();
-                img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); };
+                img.onload = () => { 
+                    ctx.globalAlpha = 1.0;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height); 
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height); 
+                };
                 syncText.innerText = "🟢 Live Syncing...";
             });
             initZoom();
@@ -1188,10 +1207,12 @@
             };
 
             const colorPixel = (pos) => {
-                data[pos] = fillColor[0];
-                data[pos+1] = fillColor[1];
-                data[pos+2] = fillColor[2];
-                data[pos+3] = 255;
+                let alpha = fillColor[3] / 255;
+                let invAlpha = 1 - alpha;
+                data[pos] = Math.round(fillColor[0] * alpha + data[pos] * invAlpha);
+                data[pos+1] = Math.round(fillColor[1] * alpha + data[pos+1] * invAlpha);
+                data[pos+2] = Math.round(fillColor[2] * alpha + data[pos+2] * invAlpha);
+                data[pos+3] = 255; 
             };
 
             while (stack.length) {
@@ -1269,45 +1290,60 @@
                 prevMidX = startX;
                 prevMidY = startY;
 
+                // Save current main canvas as background
                 tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
                 tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height); 
                 
+                // Clear the active stroke buffer
+                strokeCtx.clearRect(0, 0, strokeCanvas.width, strokeCanvas.height);
+
                 let tool = document.getElementById('toolSelect').value;
                 if (tool === 'fill') {
-                    floodFill(startX, startY, hexToRgb(document.getElementById('colorPicker').value));
+                    let baseAlpha = document.getElementById('visualOpacity').value / 100;
+                    let rgb = hexToRgb(document.getElementById('colorPicker').value);
+                    rgb[3] = Math.round(baseAlpha * 255);
+                    floodFill(startX, startY, rgb);
                     saveState();
                     return;
                 }
                 
-                // Draw initial dot for taps
+                // Initialize dot on tap
                 if (['solid', 'airbrush', 'eraser', 'velvet', 'wet'].includes(tool)) {
                     let color = tool === 'eraser' ? 'white' : document.getElementById('colorPicker').value;
                     let size = document.getElementById('brushSize').value * dpr;
                     let baseAlpha = document.getElementById('visualOpacity').value / 100;
                     
-                    ctx.strokeStyle = color;
-                    ctx.fillStyle = color;
-                    ctx.lineWidth = size;
-                    ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
-                    ctx.shadowBlur = 0;
+                    strokeCtx.strokeStyle = color;
+                    strokeCtx.fillStyle = color;
+                    strokeCtx.lineWidth = size;
+                    strokeCtx.lineCap = 'round';
+                    strokeCtx.lineJoin = 'round';
+                    strokeCtx.shadowBlur = 0;
 
                     if (tool === 'velvet') {
-                        ctx.globalAlpha = baseAlpha * 0.7;
-                        ctx.shadowBlur = 2;
-                        ctx.shadowColor = color;
+                        strokeCtx.globalAlpha = 0.7;
+                        strokeCtx.shadowBlur = 2;
+                        strokeCtx.shadowColor = color;
                     } else if (tool === 'wet') {
-                        ctx.globalAlpha = baseAlpha * 0.15;
-                        ctx.shadowBlur = size * 0.8;
-                        ctx.shadowColor = color;
+                        strokeCtx.globalAlpha = 0.15;
+                        strokeCtx.shadowBlur = size * 0.8;
+                        strokeCtx.shadowColor = color;
                     } else {
-                        ctx.globalAlpha = baseAlpha;
+                        strokeCtx.globalAlpha = 1.0;
                     }
                     
-                    ctx.beginPath();
-                    ctx.moveTo(startX, startY);
-                    ctx.lineTo(startX + 0.1, startY + 0.1);
-                    ctx.stroke();
+                    strokeCtx.beginPath();
+                    strokeCtx.moveTo(startX, startY);
+                    strokeCtx.lineTo(startX + 0.1, startY + 0.1);
+                    strokeCtx.stroke();
+
+                    // Composite immediately
+                    ctx.globalAlpha = 1.0;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
+                    ctx.globalAlpha = baseAlpha;
+                    ctx.drawImage(strokeCanvas, 0, 0, canvas.width, canvas.height);
+                    ctx.globalAlpha = 1.0; // Reset
                 }
 
                 drawing = true;
@@ -1323,27 +1359,26 @@
                 let size = document.getElementById('brushSize').value * dpr;
                 let baseAlpha = document.getElementById('visualOpacity').value / 100;
 
-                ctx.strokeStyle = color;
-                ctx.fillStyle = color;
-                ctx.lineWidth = size;
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.shadowBlur = 0;
+                // Setup stroke layer context
+                strokeCtx.strokeStyle = color;
+                strokeCtx.fillStyle = color;
+                strokeCtx.lineWidth = size;
+                strokeCtx.lineCap = 'round';
+                strokeCtx.lineJoin = 'round';
+                strokeCtx.shadowBlur = 0;
 
                 if (tool === 'velvet') {
-                    ctx.globalAlpha = baseAlpha * 0.7;
-                    ctx.shadowBlur = 2;
-                    ctx.shadowColor = color;
+                    strokeCtx.globalAlpha = 0.7;
+                    strokeCtx.shadowBlur = 2;
+                    strokeCtx.shadowColor = color;
                 } else if (tool === 'wet') {
-                    ctx.globalAlpha = baseAlpha * 0.15;
-                    ctx.shadowBlur = size * 0.8;
-                    ctx.shadowColor = color;
+                    strokeCtx.globalAlpha = 0.15;
+                    strokeCtx.shadowBlur = size * 0.8;
+                    strokeCtx.shadowColor = color;
                 } else {
-                    ctx.globalAlpha = baseAlpha;
+                    strokeCtx.globalAlpha = 1.0;
                 }
 
-                // High-performance Coalesced Events + Quadratic Curves for ultimate smoothness
                 const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
                 
                 for (let ev of events) {
@@ -1357,20 +1392,20 @@
                             let angle = Math.random() * 2 * Math.PI;
                             let px = currentX + rad * Math.cos(angle);
                             let py = currentY + rad * Math.sin(angle);
-                            ctx.globalAlpha = (Math.random() * 0.6 + 0.2) * baseAlpha;
-                            ctx.fillRect(px, py, 1.5, 1.5);
+                            strokeCtx.globalAlpha = Math.random() * 0.6 + 0.2;
+                            strokeCtx.fillRect(px, py, 1.5, 1.5);
                         }
                         lastX = currentX; lastY = currentY;
                     } else if (['solid', 'airbrush', 'eraser', 'velvet', 'wet'].includes(tool)) {
                         const midX = (lastX + currentX) / 2;
                         const midY = (lastY + currentY) / 2;
 
-                        ctx.beginPath();
-                        ctx.moveTo(prevMidX, prevMidY);
-                        ctx.quadraticCurveTo(lastX, lastY, midX, midY);
+                        strokeCtx.beginPath();
+                        strokeCtx.moveTo(prevMidX, prevMidY);
+                        strokeCtx.quadraticCurveTo(lastX, lastY, midX, midY);
                         
-                        if(tool === 'airbrush') { ctx.shadowBlur = size * 2; ctx.shadowColor = color; }
-                        ctx.stroke(); 
+                        if(tool === 'airbrush') { strokeCtx.shadowBlur = size * 2; strokeCtx.shadowColor = color; }
+                        strokeCtx.stroke(); 
                         
                         prevMidX = midX;
                         prevMidY = midY;
@@ -1379,19 +1414,27 @@
                     }
                 }
                 
-                // Handle shapes natively without overdrawing per coalesced event
+                // For shapes, clear stroke canvas per move to animate
                 if (['line', 'rect', 'circle'].includes(tool)) {
                     const finalEv = events[events.length - 1];
                     const currentX = (finalEv.clientX - rect.left) * (canvas.width / rect.width);
                     const currentY = (finalEv.clientY - rect.top) * (canvas.height / rect.height);
                     
-                    ctx.clearRect(0, 0, canvas.width, canvas.height); 
-                    ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height); 
-                    ctx.beginPath();
-                    if (tool === 'line') { ctx.moveTo(startX, startY); ctx.lineTo(currentX, currentY); ctx.stroke(); }
-                    if (tool === 'rect') { ctx.rect(startX, startY, currentX - startX, currentY - startY); ctx.stroke(); }
-                    if (tool === 'circle') { ctx.arc(startX, startY, Math.abs(currentX - startX), 0, Math.PI * 2); ctx.stroke(); }
+                    strokeCtx.clearRect(0, 0, canvas.width, canvas.height); 
+                    strokeCtx.beginPath();
+                    if (tool === 'line') { strokeCtx.moveTo(startX, startY); strokeCtx.lineTo(currentX, currentY); strokeCtx.stroke(); }
+                    if (tool === 'rect') { strokeCtx.rect(startX, startY, currentX - startX, currentY - startY); strokeCtx.stroke(); }
+                    if (tool === 'circle') { strokeCtx.arc(startX, startY, Math.abs(currentX - startX), 0, Math.PI * 2); strokeCtx.stroke(); }
                 }
+
+                // Composite active stroke with main background using specific alpha
+                ctx.globalAlpha = 1.0;
+                ctx.clearRect(0, 0, canvas.width, canvas.height); 
+                ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height); 
+                
+                ctx.globalAlpha = baseAlpha;
+                ctx.drawImage(strokeCanvas, 0, 0, canvas.width, canvas.height);
+                ctx.globalAlpha = 1.0; // Reset
             });
 
             container.addEventListener('pointerup', (e) => { 
@@ -1399,24 +1442,26 @@
                 if(drawing && !isZooming && (gameIsActive || keepDrawing)) { 
                     
                     let tool = document.getElementById('toolSelect').value;
+                    let baseAlpha = document.getElementById('visualOpacity').value / 100;
                     
+                    // Final segment for freehand
                     if (['solid', 'airbrush', 'eraser', 'velvet', 'wet'].includes(tool)) {
-                        ctx.beginPath();
-                        ctx.moveTo(prevMidX, prevMidY);
-                        ctx.lineTo(lastX, lastY);
-                        ctx.stroke();
+                        strokeCtx.beginPath();
+                        strokeCtx.moveTo(prevMidX, prevMidY);
+                        strokeCtx.lineTo(lastX, lastY);
+                        strokeCtx.stroke();
                     }
                     
-                    if (['line', 'rect', 'circle'].includes(tool)) {
-                        tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-                        tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
-                    }
+                    // Render final composite onto main canvas
+                    ctx.globalAlpha = 1.0;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
+                    ctx.globalAlpha = baseAlpha;
+                    ctx.drawImage(strokeCanvas, 0, 0, canvas.width, canvas.height);
+                    ctx.globalAlpha = 1.0; 
                     
                     history = history.slice(0, historyStep + 1); 
                     saveState(); 
-                    ctx.shadowBlur = 0;
-                    ctx.globalAlpha = document.getElementById('visualOpacity').value / 100;
-                    ctx.globalCompositeOperation = 'source-over';
                     drawing = false; 
                 } else if (drawing) {
                     drawing = false;
@@ -1437,6 +1482,8 @@
                     isZooming = true;
                     if (drawing) {
                         drawing = false;
+                        // On pinch cancel, revert to background without saving the partial stroke
+                        ctx.globalAlpha = 1.0;
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
                     }
