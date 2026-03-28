@@ -75,15 +75,14 @@
         /* Canvas Area */
         #app-body { 
             display: flex; flex: 1; justify-content: center; align-items: flex-start; 
-            padding: 0 10px; /* Reduced padding for wider canvas */
+            padding: 0 10px; 
             position: relative;
         }
 
         #canvas-container { 
             width: 100%; 
-            /* Enforce maximum width to prevent vertical overflow when computing aspect ratio */
             max-width: min(800px, calc((100vh - 250px) * 0.8));
-            aspect-ratio: 4 / 5; /* TALLER CANVAS FOR BIGGER DRAWING AREA */
+            aspect-ratio: 4 / 5; 
             margin: 0 auto;
             position: relative; 
             background-color: var(--canvas-bg);
@@ -103,9 +102,8 @@
             transform-origin: top left; touch-action: none; 
         }
         
-        /* Hardware-Accelerated Overlay for Smooth Opacity Drawing */
         #strokeBoard {
-            pointer-events: none; /* Let touches pass through to main canvas */
+            pointer-events: none; 
         }
         
         /* Floating Canvas Buttons */
@@ -130,10 +128,10 @@
         #toolbar { 
             background: var(--panel-bg);
             border: 1px solid var(--panel-border);
-            border-radius: 20px; /* Reduced from 28px */
-            padding: 12px 15px; /* Reduced from 20px */
-            margin: 10px 15px; /* Reduced from 20px */
-            display: flex; flex-direction: column; gap: 12px; /* Reduced from 20px */
+            border-radius: 20px; 
+            padding: 12px 15px; 
+            margin: 10px 15px; 
+            display: flex; flex-direction: column; gap: 12px; 
             box-shadow: 0 -10px 40px rgba(0,0,0,0.3); z-index: 40; 
             position: absolute; bottom: 0; left: 0; right: 0;
             box-sizing: border-box;
@@ -146,8 +144,8 @@
         }
         .tab-btn {
             background: transparent; border: none;
-            color: var(--text-muted); font-size: 18px; /* Reduced from 20px */
-            width: 42px; height: 42px; /* Reduced from 50px */
+            color: var(--text-muted); font-size: 18px; 
+            width: 42px; height: 42px; 
             border-radius: 14px; cursor: pointer;
             display: flex; justify-content: center; align-items: center;
             transition: 0.2s; position: relative;
@@ -165,7 +163,7 @@
             box-shadow: 0 0 8px var(--purple-glow);
         }
         .color-ring {
-            width: 20px; height: 20px; border-radius: 50%; /* Reduced from 24px */
+            width: 20px; height: 20px; border-radius: 50%; 
             border: 3px solid transparent;
             background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red) border-box;
             -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
@@ -175,7 +173,7 @@
         /* Tool Selection Menu */
         #brushMenu {
             position: absolute;
-            bottom: 60px; /* Adjusted to fit smaller toolbar */
+            bottom: 60px; 
             right: 0px; 
             background: var(--panel-bg);
             border: 1px solid var(--panel-border);
@@ -194,7 +192,7 @@
         #brushMenu::-webkit-scrollbar { display: none; }
         #brushMenu.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
         .menu-item {
-            padding: 10px 15px; border-radius: 10px; /* Reduced from 12px 18px */
+            padding: 10px 15px; border-radius: 10px; 
             color: var(--text-muted); font-size: 13px; font-weight: 500;
             cursor: pointer; display: flex; align-items: center; gap: 12px;
             transition: 0.2s; white-space: nowrap;
@@ -233,7 +231,7 @@
         .settings-box {
             background: rgba(0,0,0,0.2);
             border: 1px solid var(--panel-border);
-            border-radius: 16px; padding: 10px 12px; /* Reduced from 20px/15px */
+            border-radius: 16px; padding: 10px 12px; 
             display: flex; align-items: center; gap: 10px;
         }
         
@@ -261,7 +259,7 @@
         .action-row { display: flex; justify-content: center; gap: 15px; }
         .action-btn {
             background: rgba(0,0,0,0.2); border: 1px solid var(--panel-border);
-            color: var(--text-muted); width: 55px; height: 38px; /* Reduced */
+            color: var(--text-muted); width: 55px; height: 38px; 
             border-radius: 12px; display: flex; justify-content: center; align-items: center;
             font-size: 15px; cursor: pointer; transition: 0.2s;
         }
@@ -376,8 +374,8 @@
     <div id="brushMenu">
         <div class="menu-item active" data-brush="solid"><i class="fas fa-paint-brush"></i> Solid Brush</div>
         <div class="menu-item" data-brush="airbrush"><i class="fas fa-spray-can"></i> Airbrush</div>
-        <div class="menu-item" data-brush="velvet"><i class="fas fa-marker"></i> Velvet Marker</div>
-        <div class="menu-item" data-brush="wet"><i class="fas fa-tint"></i> Wet Brush</div>
+        <div class="menu-item" data-brush="glow"><i class="fas fa-magic"></i> Glow Brush</div>
+        <div class="menu-item" data-brush="spray"><i class="fas fa-braille"></i> Spray Paint</div>
         <div class="menu-item" data-brush="fill"><i class="fas fa-fill-drip"></i> Fill Bucket</div>
         <div style="border-top: 1px solid var(--panel-border); margin: 4px 0;"></div>
         <div class="menu-item" data-brush="line"><i class="fas fa-minus"></i> Line</div>
@@ -399,8 +397,7 @@
             <option value="solid" selected>🖌️ Solid Brush</option>
             <option value="fill">🪣 Fill Color</option>
             <option value="airbrush">💨 Airbrush</option>
-            <option value="velvet">🖍️ Velvet</option>
-            <option value="wet">🖌️ Wet Brush</option>
+            <option value="glow">🌟 Glow</option>
             <option value="spray">💨 Spray</option>
             <option value="eraser">🧽 Eraser</option>
             <option value="line">📏 Line</option>
@@ -790,12 +787,12 @@
         // RESOLUTION (Applies to both layers)
         const dpr = window.devicePixelRatio || 1;
         canvas.width = 800 * dpr;
-        canvas.height = 1000 * dpr; // Increased to match new 4:5 aspect ratio
+        canvas.height = 1000 * dpr; 
         canvas.style.width = '100%';
         canvas.style.height = '100%';
 
         strokeCanvas.width = 800 * dpr;
-        strokeCanvas.height = 1000 * dpr; // Increased to match new 4:5 aspect ratio
+        strokeCanvas.height = 1000 * dpr; 
         strokeCanvas.style.width = '100%';
         strokeCanvas.style.height = '100%';
         
@@ -1304,9 +1301,7 @@
                 let tool = document.getElementById('toolSelect').value;
                 let baseAlpha = document.getElementById('visualOpacity').value / 100;
                 
-                // Clear the overlay layer to begin drawing
                 strokeCtx.clearRect(0, 0, strokeCanvas.width, strokeCanvas.height);
-                // Assign visual CSS opacity for the live stroke overlay
                 strokeCanvas.style.opacity = baseAlpha;
 
                 if (tool === 'fill') {
@@ -1317,8 +1312,20 @@
                     return;
                 }
                 
-                // Draw initial dot on hardware overlay
-                if (['solid', 'airbrush', 'eraser', 'velvet', 'wet'].includes(tool)) {
+                if (tool === 'spray') {
+                    let color = document.getElementById('colorPicker').value;
+                    let size = document.getElementById('brushSize').value * dpr;
+                    strokeCtx.fillStyle = color;
+                    let density = Math.max(20, size * 3);
+                    for (let i = 0; i < density; i++) {
+                        let rad = size * Math.sqrt(Math.random());
+                        let angle = Math.random() * 2 * Math.PI;
+                        let px = startX + rad * Math.cos(angle);
+                        let py = startY + rad * Math.sin(angle);
+                        strokeCtx.globalAlpha = Math.random() * 0.6 + 0.2;
+                        strokeCtx.fillRect(px, py, 1.5, 1.5);
+                    }
+                } else if (['solid', 'airbrush', 'eraser', 'glow'].includes(tool)) {
                     let color = tool === 'eraser' ? 'white' : document.getElementById('colorPicker').value;
                     let size = document.getElementById('brushSize').value * dpr;
                     
@@ -1329,13 +1336,9 @@
                     strokeCtx.lineJoin = 'round';
                     strokeCtx.shadowBlur = 0;
 
-                    if (tool === 'velvet') {
-                        strokeCtx.globalAlpha = 0.7;
-                        strokeCtx.shadowBlur = 2;
-                        strokeCtx.shadowColor = color;
-                    } else if (tool === 'wet') {
-                        strokeCtx.globalAlpha = 0.15;
-                        strokeCtx.shadowBlur = size * 0.8;
+                    if (tool === 'glow') {
+                        strokeCtx.globalAlpha = 1.0;
+                        strokeCtx.shadowBlur = size * 2;
                         strokeCtx.shadowColor = color;
                     } else {
                         strokeCtx.globalAlpha = 1.0;
@@ -1359,7 +1362,6 @@
                 let color = tool === 'eraser' ? 'white' : document.getElementById('colorPicker').value;
                 let size = document.getElementById('brushSize').value * dpr;
 
-                // Configure overlay stroke settings natively (no global alpha manipulation here)
                 strokeCtx.strokeStyle = color;
                 strokeCtx.fillStyle = color;
                 strokeCtx.lineWidth = size;
@@ -1367,13 +1369,9 @@
                 strokeCtx.lineJoin = 'round';
                 strokeCtx.shadowBlur = 0;
 
-                if (tool === 'velvet') {
-                    strokeCtx.globalAlpha = 0.7;
-                    strokeCtx.shadowBlur = 2;
-                    strokeCtx.shadowColor = color;
-                } else if (tool === 'wet') {
-                    strokeCtx.globalAlpha = 0.15;
-                    strokeCtx.shadowBlur = size * 0.8;
+                if (tool === 'glow') {
+                    strokeCtx.globalAlpha = 1.0;
+                    strokeCtx.shadowBlur = size * 2;
                     strokeCtx.shadowColor = color;
                 } else {
                     strokeCtx.globalAlpha = 1.0;
@@ -1386,6 +1384,7 @@
                     const currentY = (ev.clientY - rect.top) * (canvas.height / rect.height);
 
                     if (tool === 'spray') {
+                        strokeCtx.fillStyle = color;
                         let density = Math.max(10, size * 2.5);
                         for (let i = 0; i < density; i++) {
                             let rad = size * Math.sqrt(Math.random());
@@ -1396,7 +1395,7 @@
                             strokeCtx.fillRect(px, py, 1.5, 1.5);
                         }
                         lastX = currentX; lastY = currentY;
-                    } else if (['solid', 'airbrush', 'eraser', 'velvet', 'wet'].includes(tool)) {
+                    } else if (['solid', 'airbrush', 'eraser', 'glow'].includes(tool)) {
                         const midX = (lastX + currentX) / 2;
                         const midY = (lastY + currentY) / 2;
 
@@ -1414,7 +1413,6 @@
                     }
                 }
                 
-                // Clear and recreate shape preview entirely on stroke context
                 if (['line', 'rect', 'circle'].includes(tool)) {
                     const finalEv = events[events.length - 1];
                     const currentX = (finalEv.clientX - rect.left) * (canvas.width / rect.width);
@@ -1426,9 +1424,6 @@
                     if (tool === 'rect') { strokeCtx.rect(startX, startY, currentX - startX, currentY - startY); strokeCtx.stroke(); }
                     if (tool === 'circle') { strokeCtx.arc(startX, startY, Math.abs(currentX - startX), 0, Math.PI * 2); strokeCtx.stroke(); }
                 }
-                
-                // MASSIVE PERFORMANCE FIX: Removed all main 'ctx' copy operations from the pointer move.
-                // Live preview is completely offloaded to the browser's CSS overlay compositor.
             });
 
             container.addEventListener('pointerup', (e) => { 
@@ -1438,14 +1433,13 @@
                     let tool = document.getElementById('toolSelect').value;
                     let baseAlpha = document.getElementById('visualOpacity').value / 100;
                     
-                    if (['solid', 'airbrush', 'eraser', 'velvet', 'wet'].includes(tool)) {
+                    if (['solid', 'airbrush', 'eraser', 'glow'].includes(tool)) {
                         strokeCtx.beginPath();
                         strokeCtx.moveTo(prevMidX, prevMidY);
                         strokeCtx.lineTo(lastX, lastY);
                         strokeCtx.stroke();
                     }
                     
-                    // Apply hardware overlay layer cleanly onto main canvas
                     ctx.globalAlpha = baseAlpha;
                     ctx.drawImage(strokeCanvas, 0, 0, canvas.width, canvas.height);
                     ctx.globalAlpha = 1.0; 
@@ -1474,7 +1468,7 @@
                     isZooming = true;
                     if (drawing) {
                         drawing = false;
-                        strokeCtx.clearRect(0, 0, canvas.width, canvas.height); // Cancel live stroke logic safely
+                        strokeCtx.clearRect(0, 0, canvas.width, canvas.height); 
                     }
                     let t1 = e.touches[0], t2 = e.touches[1];
                     initialDistance = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
@@ -1504,7 +1498,7 @@
                     panX = Math.max(minPanX, Math.min(0, pX)); panY = Math.max(minPanY, Math.min(0, pY));
                     scale = newScale;
                     canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-                    strokeCanvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`; // Bind transformations together
+                    strokeCanvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`; 
                 }
             });
             container.addEventListener('touchend', (e) => { 
