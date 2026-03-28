@@ -101,6 +101,11 @@
             transform-origin: top left; touch-action: none; 
         }
         
+        /* Hardware-Accelerated Overlay for Smooth Opacity Drawing */
+        #strokeBoard {
+            pointer-events: none; /* Let touches pass through to main canvas */
+        }
+        
         /* Floating Canvas Buttons */
         .floating-btn {
             position: absolute;
@@ -259,7 +264,7 @@
         }
         .action-btn:active { transform: scale(0.95); }
         .action-btn.primary { background: var(--purple-primary); color: #fff; border: none; box-shadow: 0 4px 15px var(--purple-glow); width: 80px; }
-        /* Style specifically for the new Clear button */
+        /* Solid Red Clear Button */
         #clearBtnBottom { background: #ef4444; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
 
         /* Hidden Inputs */
@@ -356,6 +361,8 @@
             </button>
             
             <canvas id="board"></canvas>
+            
+            <canvas id="strokeBoard"></canvas>
             
             <div id="comments-wrapper">
                 <div id="comments-container"></div> 
@@ -541,7 +548,6 @@
             return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
         }
 
-        // Generate Color Wheel
         for(let y=0; y<wCanvas.height; y++) {
             for(let x=0; x<wCanvas.width; x++) {
                 let dx = x - wheelRadius;
@@ -691,8 +697,14 @@
         const isDrawer = (actualUserId === drawerId || actualUserId === 0); 
         const drawerName = tg.initDataUnsafe?.user?.first_name || 'Player';
 
+        // MAIN CANVAS
         const canvas = document.getElementById('board');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        
+        // STROKE CANVAS FOR PERFORMANCE OPACITY
+        const strokeCanvas = document.getElementById('strokeBoard');
+        const strokeCtx = strokeCanvas.getContext('2d', { willReadFrequently: true });
+
         const container = document.getElementById('canvas-container');
         const syncText = document.getElementById('syncText');
         
@@ -772,19 +784,18 @@
             if (tool === 'eraser') document.getElementById('toolSelect').value = 'solid';
         });
 
-        // FORCES 800x800 SQUARE RESOLUTION 
+        // RESOLUTION (Applies to both layers)
         const dpr = window.devicePixelRatio || 1;
         canvas.width = 800 * dpr;
         canvas.height = 800 * dpr;
         canvas.style.width = '100%';
         canvas.style.height = '100%';
-        
-        // --- NEW: Separate Stroke Canvas for Smooth Opacity Compositing ---
-        let strokeCanvas = document.createElement('canvas');
-        strokeCanvas.width = canvas.width;
-        strokeCanvas.height = canvas.height;
-        let strokeCtx = strokeCanvas.getContext('2d');
 
+        strokeCanvas.width = 800 * dpr;
+        strokeCanvas.height = 800 * dpr;
+        strokeCanvas.style.width = '100%';
+        strokeCanvas.style.height = '100%';
+        
         if (!isDrawer) {
             document.getElementById('toolbar').style.display = 'none';
             document.getElementById('viewer-overlay').style.display = 'flex';
@@ -832,10 +843,10 @@
                 historyStep--;
                 let img = new Image(); img.src = history[historyStep];
                 img.onload = () => { 
-                    ctx.globalAlpha = 1.0; 
+                    ctx.globalAlpha = 1.0;
                     ctx.clearRect(0, 0, canvas.width, canvas.height); 
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height); 
-                }
+                };
             }
         };
 
@@ -847,17 +858,18 @@
                     ctx.globalAlpha = 1.0;
                     ctx.clearRect(0, 0, canvas.width, canvas.height); 
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height); 
-                }
+                };
             }
         };
         
-        // --- NEW: Bottom Clear Button Logic (Fixes Ghost Opacity) ---
+        // --- PERFECTED CLEAR CANVAS LOGIC ---
         document.getElementById('clearBtnBottom').onclick = () => { 
-            if(gameIsActive || keepDrawing){ 
-                ctx.globalAlpha = 1.0;
+            if(gameIsActive || keepDrawing) { 
+                ctx.globalAlpha = 1.0; // Hard reset to force complete clear
                 ctx.globalCompositeOperation = 'source-over';
                 ctx.fillStyle = "white"; 
-                ctx.fillRect(0, 0, canvas.width, canvas.height); 
+                ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear
+                ctx.fillRect(0, 0, canvas.width, canvas.height); // Flood white
                 saveState(); 
             }
         };
@@ -1267,10 +1279,6 @@
         let lastX, lastY;
         let prevMidX, prevMidY;
         
-        let tempCanvas = document.createElement('canvas');
-        tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
-        let tempCtx = tempCanvas.getContext('2d');
-        
         let scale = 1;
         let panX = 0;
         let panY = 0;
@@ -1290,16 +1298,15 @@
                 prevMidX = startX;
                 prevMidY = startY;
 
-                // Save current main canvas as background
-                tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-                tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height); 
-                
-                // Clear the active stroke buffer
-                strokeCtx.clearRect(0, 0, strokeCanvas.width, strokeCanvas.height);
-
                 let tool = document.getElementById('toolSelect').value;
+                let baseAlpha = document.getElementById('visualOpacity').value / 100;
+                
+                // Clear the overlay layer to begin drawing
+                strokeCtx.clearRect(0, 0, strokeCanvas.width, strokeCanvas.height);
+                // Assign visual CSS opacity for the live stroke overlay
+                strokeCanvas.style.opacity = baseAlpha;
+
                 if (tool === 'fill') {
-                    let baseAlpha = document.getElementById('visualOpacity').value / 100;
                     let rgb = hexToRgb(document.getElementById('colorPicker').value);
                     rgb[3] = Math.round(baseAlpha * 255);
                     floodFill(startX, startY, rgb);
@@ -1307,11 +1314,10 @@
                     return;
                 }
                 
-                // Initialize dot on tap
+                // Draw initial dot on hardware overlay
                 if (['solid', 'airbrush', 'eraser', 'velvet', 'wet'].includes(tool)) {
                     let color = tool === 'eraser' ? 'white' : document.getElementById('colorPicker').value;
                     let size = document.getElementById('brushSize').value * dpr;
-                    let baseAlpha = document.getElementById('visualOpacity').value / 100;
                     
                     strokeCtx.strokeStyle = color;
                     strokeCtx.fillStyle = color;
@@ -1336,14 +1342,6 @@
                     strokeCtx.moveTo(startX, startY);
                     strokeCtx.lineTo(startX + 0.1, startY + 0.1);
                     strokeCtx.stroke();
-
-                    // Composite immediately
-                    ctx.globalAlpha = 1.0;
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
-                    ctx.globalAlpha = baseAlpha;
-                    ctx.drawImage(strokeCanvas, 0, 0, canvas.width, canvas.height);
-                    ctx.globalAlpha = 1.0; // Reset
                 }
 
                 drawing = true;
@@ -1357,9 +1355,8 @@
                 let tool = document.getElementById('toolSelect').value;
                 let color = tool === 'eraser' ? 'white' : document.getElementById('colorPicker').value;
                 let size = document.getElementById('brushSize').value * dpr;
-                let baseAlpha = document.getElementById('visualOpacity').value / 100;
 
-                // Setup stroke layer context
+                // Configure overlay stroke settings natively (no global alpha manipulation here)
                 strokeCtx.strokeStyle = color;
                 strokeCtx.fillStyle = color;
                 strokeCtx.lineWidth = size;
@@ -1414,7 +1411,7 @@
                     }
                 }
                 
-                // For shapes, clear stroke canvas per move to animate
+                // Clear and recreate shape preview entirely on stroke context
                 if (['line', 'rect', 'circle'].includes(tool)) {
                     const finalEv = events[events.length - 1];
                     const currentX = (finalEv.clientX - rect.left) * (canvas.width / rect.width);
@@ -1426,15 +1423,9 @@
                     if (tool === 'rect') { strokeCtx.rect(startX, startY, currentX - startX, currentY - startY); strokeCtx.stroke(); }
                     if (tool === 'circle') { strokeCtx.arc(startX, startY, Math.abs(currentX - startX), 0, Math.PI * 2); strokeCtx.stroke(); }
                 }
-
-                // Composite active stroke with main background using specific alpha
-                ctx.globalAlpha = 1.0;
-                ctx.clearRect(0, 0, canvas.width, canvas.height); 
-                ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height); 
                 
-                ctx.globalAlpha = baseAlpha;
-                ctx.drawImage(strokeCanvas, 0, 0, canvas.width, canvas.height);
-                ctx.globalAlpha = 1.0; // Reset
+                // MASSIVE PERFORMANCE FIX: Removed all main 'ctx' copy operations from the pointer move.
+                // Live preview is completely offloaded to the browser's CSS overlay compositor.
             });
 
             container.addEventListener('pointerup', (e) => { 
@@ -1444,7 +1435,6 @@
                     let tool = document.getElementById('toolSelect').value;
                     let baseAlpha = document.getElementById('visualOpacity').value / 100;
                     
-                    // Final segment for freehand
                     if (['solid', 'airbrush', 'eraser', 'velvet', 'wet'].includes(tool)) {
                         strokeCtx.beginPath();
                         strokeCtx.moveTo(prevMidX, prevMidY);
@@ -1452,13 +1442,12 @@
                         strokeCtx.stroke();
                     }
                     
-                    // Render final composite onto main canvas
-                    ctx.globalAlpha = 1.0;
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
+                    // Apply hardware overlay layer cleanly onto main canvas
                     ctx.globalAlpha = baseAlpha;
                     ctx.drawImage(strokeCanvas, 0, 0, canvas.width, canvas.height);
                     ctx.globalAlpha = 1.0; 
+                    
+                    strokeCtx.clearRect(0, 0, canvas.width, canvas.height);
                     
                     history = history.slice(0, historyStep + 1); 
                     saveState(); 
@@ -1482,10 +1471,7 @@
                     isZooming = true;
                     if (drawing) {
                         drawing = false;
-                        // On pinch cancel, revert to background without saving the partial stroke
-                        ctx.globalAlpha = 1.0;
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
+                        strokeCtx.clearRect(0, 0, canvas.width, canvas.height); // Cancel live stroke logic safely
                     }
                     let t1 = e.touches[0], t2 = e.touches[1];
                     initialDistance = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
@@ -1515,6 +1501,7 @@
                     panX = Math.max(minPanX, Math.min(0, pX)); panY = Math.max(minPanY, Math.min(0, pY));
                     scale = newScale;
                     canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+                    strokeCanvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`; // Bind transformations together
                 }
             });
             container.addEventListener('touchend', (e) => { 
