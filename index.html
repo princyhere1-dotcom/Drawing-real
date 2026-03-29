@@ -200,7 +200,7 @@
         .menu-item i { width: 16px; text-align: center; }
         .menu-item:hover, .menu-item.active { background: rgba(124, 58, 237, 0.1); color: var(--text-light); }
 
-        /* Big Color Wheel Overlay (Redesigned Donut) */
+        /* Big Color Wheel Overlay */
         #colorWheelOverlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
@@ -226,7 +226,7 @@
             top: 50%; left: 100%; /* Default right side */
         }
         
-        /* New Color Preview & Sliders */
+        /* New Color Preview & Dynamic Sliders */
         .color-preview-box {
             display: flex; align-items: center; gap: 15px; width: 100%; justify-content: center;
             padding: 5px 0 15px 0; border-bottom: 1px solid var(--panel-border);
@@ -242,14 +242,19 @@
             color: var(--text-muted); font-weight: 600; width: 100%;
         }
         .color-slider-row input[type="range"] {
-            flex: 1; height: 6px; border-radius: 3px; background: #2a2938;
+            flex: 1; height: 8px; border-radius: 4px;
             -webkit-appearance: none; outline: none;
+            /* Background dynamically updated via JS */
         }
         .color-slider-row input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
             background: var(--purple-primary); border: 2px solid #fff;
             box-shadow: 0 0 8px rgba(0,0,0,0.5); cursor: pointer;
         }
+        .reset-icon {
+            cursor: pointer; color: var(--text-muted); font-size: 12px; margin-left: 2px; transition: 0.2s;
+        }
+        .reset-icon:active { transform: scale(0.8) rotate(-45deg); color: #fff; }
 
         /* Middle Row: Settings Box */
         .settings-box {
@@ -362,11 +367,13 @@
                     <span style="width: 25px; text-align: center;"><i class="fas fa-adjust"></i></span>
                     <input type="range" id="satSlider" min="0" max="100" value="100">
                     <span id="satVal" style="width: 40px; text-align: right;">100%</span>
+                    <i class="fas fa-undo reset-icon" id="resetSatBtn" title="Reset Saturation"></i>
                 </div>
                 <div class="color-slider-row">
                     <span style="width: 25px; text-align: center;"><i class="fas fa-sun"></i></span>
                     <input type="range" id="briSlider" min="0" max="100" value="50">
                     <span id="briVal" style="width: 40px; text-align: right;">50%</span>
+                    <i class="fas fa-undo reset-icon" id="resetBriBtn" title="Reset Brightness"></i>
                 </div>
             </div>
 
@@ -626,6 +633,14 @@
             document.getElementById('finalColorPreview').style.backgroundColor = hex;
             document.getElementById('wheelThumbLarge').style.backgroundColor = hex;
             
+            // Update Slider Gradients Dynamically
+            let hDeg = currentH * 360;
+            let sPct = currentS * 100;
+            let lPct = currentL * 100;
+            
+            document.getElementById('satSlider').style.background = `linear-gradient(to right, hsl(${hDeg}, 0%, ${lPct}%), hsl(${hDeg}, 100%, ${lPct}%))`;
+            document.getElementById('briSlider').style.background = `linear-gradient(to right, hsl(${hDeg}, ${sPct}%, 0%), hsl(${hDeg}, ${sPct}%, 50%), hsl(${hDeg}, ${sPct}%, 100%))`;
+
             // Sync with actual app drawing tools
             document.getElementById('colorPicker').value = hex;
             document.getElementById('currentActiveSwatch').style.backgroundColor = hex;
@@ -685,6 +700,24 @@
             document.getElementById('briVal').innerText = e.target.value + '%';
             applyColorUpdate();
         });
+
+        // Reset Buttons Logic
+        document.getElementById('resetSatBtn').addEventListener('click', () => {
+            currentS = 1.0;
+            document.getElementById('satSlider').value = 100;
+            document.getElementById('satVal').innerText = '100%';
+            applyColorUpdate();
+        });
+
+        document.getElementById('resetBriBtn').addEventListener('click', () => {
+            currentL = 0.5;
+            document.getElementById('briSlider').value = 50;
+            document.getElementById('briVal').innerText = '50%';
+            applyColorUpdate();
+        });
+
+        // Initialize slider background gradients on load
+        applyColorUpdate();
 
         // Swatch syncing
         document.querySelectorAll('.swatch:not(.active-color)').forEach(sw => {
