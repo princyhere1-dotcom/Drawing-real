@@ -699,13 +699,13 @@
         const isDrawer = (actualUserId === drawerId || actualUserId === 0); 
         const drawerName = tg.initDataUnsafe?.user?.first_name || 'Player';
 
-        // MAIN CANVAS
+        // MAIN CANVAS (Optimized for desynchronized drawing rendering)
         const canvas = document.getElementById('board');
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const ctx = canvas.getContext('2d', { willReadFrequently: true, desynchronized: true });
         
-        // STROKE CANVAS FOR PERFORMANCE OPACITY
+        // STROKE CANVAS FOR PERFORMANCE OPACITY (Hardware acceleration enabled)
         const strokeCanvas = document.getElementById('strokeBoard');
-        const strokeCtx = strokeCanvas.getContext('2d', { willReadFrequently: true });
+        const strokeCtx = strokeCanvas.getContext('2d', { desynchronized: true });
 
         const container = document.getElementById('canvas-container');
         const syncText = document.getElementById('syncText');
@@ -1060,12 +1060,14 @@
 
         if (!isDrawer) {
             client.on('message', (topic, message) => {
-                let img = new Image(); img.src = message.toString();
+                let img = new Image(); 
+                img.decoding = "async"; // Non-blocking decode for perfectly smooth viewing
                 img.onload = () => { 
                     ctx.globalAlpha = 1.0;
                     ctx.clearRect(0, 0, canvas.width, canvas.height); 
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height); 
                 };
+                img.src = message.toString();
                 syncText.innerText = "🟢 Live Syncing...";
             });
             initZoom();
@@ -1073,8 +1075,17 @@
             initDrawing();
             initZoom();
             
+            // --- OPTIMIZED MQTT SYNC LOGIC ---
+            let lastMqttCanvasData = ""; 
             syncInterval = setInterval(() => {
-                if (client.connected && (gameIsActive || keepDrawing)) client.publish(syncTopic, canvas.toDataURL('image/jpeg', 0.5));
+                if (client.connected && (gameIsActive || keepDrawing)) {
+                    // Lowered quality to 0.35 to save bandwidth and prevent main-thread lag when encoding
+                    const currentData = canvas.toDataURL('image/jpeg', 0.35); 
+                    if (currentData !== lastMqttCanvasData) {
+                        client.publish(syncTopic, currentData, { qos: 0 }); // QoS 0 for fast real-time drops
+                        lastMqttCanvasData = currentData;
+                    }
+                }
             }, 2000);
 
             function sendLivePhoto(captionType) {
@@ -1117,34 +1128,46 @@
                 if (gameIsActive && lastSentPhotoId) sendLivePhoto('update'); 
             }, 60000);
 
+            // --- SECURE TELEGRAM API UPDATE LOGIC ---
             let lastCanvasData = ""; 
+            let isSyncing = false; 
+            let rateLimitPauseUntil = 0; 
+            let lastUpdateTimestamp = 0;
             
-            function updateTelegramCanvas() {
+            async function updateTelegramCanvas() {
                 if (!gameIsActive && !keepDrawing) return; 
                 if (!window.TG_BOT_TOKEN) return;
                 
+                // Prevent overlapping uploads and respect Telegram's timeout
+                if (isSyncing || Date.now() < rateLimitPauseUntil) return;
+
                 const currentData = canvas.toDataURL('image/jpeg', 0.8);
                 if (currentData === lastCanvasData) return; 
                 
-                if (gameIsActive) {
-                    if (lastSentPhotoId) {
-                        lastCanvasData = currentData; 
-                        const file = dataURLtoFile(currentData, 'drawing.jpg');
-                        const editData = new FormData();
-                        editData.append('chat_id', chatId);
-                        editData.append('message_id', lastSentPhotoId);
-                        editData.append('media', JSON.stringify({
-                            type: 'photo', media: 'attach://drawing', 
-                            caption: `<b><a href="tg://user?id=${drawerId}">${drawerName}</a></b> is drawing 🎨\n\nGuess the word!`, 
-                            parse_mode: 'HTML'
-                        }));
-                        editData.append('drawing', file);
-                        editData.append('reply_markup', JSON.stringify({
-                            inline_keyboard: [[{text: "🎨 Open Canvas", url: `https://t.me/Drawinggamebot/DRAWING?startapp=${chatId}_${drawerId}_${startTime}_${mainMsgId}` }]]
-                        }));
-                        fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData})
-                        .then(r => r.json())
-                        .then(res => {
+                isSyncing = true; // Lock
+                lastUpdateTimestamp = Date.now();
+
+                try {
+                    if (gameIsActive) {
+                        if (lastSentPhotoId) {
+                            lastCanvasData = currentData; 
+                            const file = dataURLtoFile(currentData, 'drawing.jpg');
+                            const editData = new FormData();
+                            editData.append('chat_id', chatId);
+                            editData.append('message_id', lastSentPhotoId);
+                            editData.append('media', JSON.stringify({
+                                type: 'photo', media: 'attach://drawing', 
+                                caption: `<b><a href="tg://user?id=${drawerId}">${drawerName}</a></b> is drawing 🎨\n\nGuess the word!`, 
+                                parse_mode: 'HTML'
+                            }));
+                            editData.append('drawing', file);
+                            editData.append('reply_markup', JSON.stringify({
+                                inline_keyboard: [[{text: "🎨 Open Canvas", url: `https://t.me/Drawinggamebot/DRAWING?startapp=${chatId}_${drawerId}_${startTime}_${mainMsgId}` }]]
+                            }));
+                            
+                            const response = await fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData});
+                            const res = await response.json();
+                            
                             if (!res.ok) {
                                 if (res.error_code === 400 && res.description.includes("not found")) {
                                     lastSentPhotoId = null; 
@@ -1152,36 +1175,46 @@
                                     lastCanvasData = ""; 
                                 } else if (res.error_code === 429) {
                                     lastCanvasData = "";
+                                    // Respect Telegram's exact timeout requirement
+                                    const waitSeconds = res.parameters?.retry_after || 30;
+                                    rateLimitPauseUntil = Date.now() + (waitSeconds * 1000);
                                 }
                             }
-                        }).catch(()=>{});
-                    } else {
+                        } else {
+                            lastCanvasData = currentData;
+                            sendLivePhoto('update');
+                        }
+                    } else if (keepDrawing && window.finalMessageId) {
                         lastCanvasData = currentData;
-                        sendLivePhoto('update');
-                    }
-                } else if (keepDrawing && window.finalMessageId) {
-                    lastCanvasData = currentData;
-                    const file = dataURLtoFile(currentData, 'drawing.jpg');
-                    const editData = new FormData();
-                    editData.append('chat_id', chatId);
-                    editData.append('message_id', window.finalMessageId);
-                    editData.append('media', JSON.stringify({
-                        type: 'photo', media: 'attach://drawing', 
-                        caption: `🎨 <b>Final Masterpiece!</b>\nWord was: <b>${window.finalWord}</b>`, 
-                        parse_mode: 'HTML'
-                    }));
-                    editData.append('drawing', file);
-                    fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData})
-                    .then(r => r.json())
-                    .then(res => {
+                        const file = dataURLtoFile(currentData, 'drawing.jpg');
+                        const editData = new FormData();
+                        editData.append('chat_id', chatId);
+                        editData.append('message_id', window.finalMessageId);
+                        editData.append('media', JSON.stringify({
+                            type: 'photo', media: 'attach://drawing', 
+                            caption: `🎨 <b>Final Masterpiece!</b>\nWord was: <b>${window.finalWord}</b>`, 
+                            parse_mode: 'HTML'
+                        }));
+                        editData.append('drawing', file);
+                        
+                        const response = await fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData});
+                        const res = await response.json();
+                        
                         if (!res.ok) {
                             if (res.error_code === 400 && res.description.includes("not found")) {
                                 lastCanvasData = ""; 
                             } else if (res.error_code === 429) {
                                 lastCanvasData = "";
+                                const waitSeconds = res.parameters?.retry_after || 30;
+                                rateLimitPauseUntil = Date.now() + (waitSeconds * 1000);
                             }
                         }
-                    }).catch(()=>{});
+                    }
+                } catch (err) {
+                    // Network error, allow retry next cycle
+                    lastCanvasData = "";
+                } finally {
+                    isSyncing = false; // Unlock
                 }
             }
 
@@ -1189,7 +1222,10 @@
 
             document.addEventListener("visibilitychange", () => {
                 if (document.visibilityState === 'visible') {
-                    updateTelegramCanvas(); 
+                    // Cooldown: Only trigger on visibility change if at least 15 seconds have passed since the last update
+                    if (Date.now() - lastUpdateTimestamp > 15000) {
+                        updateTelegramCanvas(); 
+                    }
                 }
             });
         }
