@@ -226,10 +226,10 @@
         #uiColorWheelLarge { width: 100%; height: 100%; border-radius: 50%; display: block; }
         #wheelThumbLarge {
             position: absolute; width: 26px; height: 26px; border-radius: 50%;
-            border: 4px solid #ffffff; background: #000000;
+            border: 4px solid #ffffff; background: #ff0000;
             box-shadow: 0 0 10px rgba(0,0,0,0.6);
             transform: translate(-50%, -50%); pointer-events: none;
-            top: 50%; left: 100%; 
+            top: 50%; left: 100%; /* Default right side */
         }
         
         /* New Color Preview & Dynamic Sliders */
@@ -239,7 +239,7 @@
         }
         .preview-circle {
             width: 45px; height: 45px; border-radius: 50%; border: 3px solid #fff;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.4); background: #000000;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4); background: #ff0000;
             transition: background 0.1s;
         }
         .slider-container { width: 100%; display: flex; flex-direction: column; gap: 16px; margin-top: 5px; }
@@ -250,6 +250,7 @@
         .color-slider-row input[type="range"] {
             flex: 1; height: 8px; border-radius: 4px;
             -webkit-appearance: none; outline: none;
+            /* Background dynamically updated via JS */
         }
         .color-slider-row input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
@@ -272,9 +273,9 @@
         .recent-colors { display: flex; flex-direction: column; gap: 5px; margin-right: 5px; }
         .recent-colors span { font-size: 8px; font-weight: 700; color: var(--text-muted); letter-spacing: 1px; }
         .swatch-row { display: flex; gap: 6px; align-items: center; }
-        .swatch { width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: 0.1s;}
+        .swatch { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: 0.1s;}
         .swatch:active { transform: scale(0.9); }
-        .swatch.active-color { border: 2px solid var(--purple-primary); box-shadow: 0 0 8px var(--purple-glow); pointer-events: none;}
+        .swatch.active-color { border: 2px solid var(--purple-primary); box-shadow: 0 0 8px var(--purple-glow); width: 20px; height: 20px; pointer-events: none;}
 
         .sliders { flex: 1; display: flex; flex-direction: column; gap: 10px; padding-left: 10px; border-left: 1px solid var(--panel-border); }
         .slider-row { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 11px;}
@@ -376,8 +377,8 @@
                 </div>
                 <div class="color-slider-row">
                     <span style="width: 25px; text-align: center;"><i class="fas fa-sun"></i></span>
-                    <input type="range" id="briSlider" min="0" max="100" value="0">
-                    <span id="briVal" style="width: 40px; text-align: right;">0%</span>
+                    <input type="range" id="briSlider" min="0" max="100" value="50">
+                    <span id="briVal" style="width: 40px; text-align: right;">50%</span>
                     <i class="fas fa-undo reset-icon" id="resetBriBtn" title="Reset Brightness"></i>
                 </div>
             </div>
@@ -410,6 +411,7 @@
             </button>
 
             <canvas id="board"></canvas>
+            
             <canvas id="strokeBoard"></canvas>
             
             <div id="comments-wrapper">
@@ -431,26 +433,13 @@
         <div class="menu-item" data-brush="circle"><i class="far fa-circle"></i> Circle</div>
     </div>
 
-    <div id="quickColorMenu" style="position: absolute; bottom: 75px; left: 15px; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 12px; padding: 10px; display: none; grid-template-columns: repeat(4, 1fr); gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); z-index: 100;">
-        <div class="swatch" data-color="#ff0000" style="background: #ff0000; width:24px; height:24px;"></div>
-        <div class="swatch" data-color="#ff8c00" style="background: #ff8c00; width:24px; height:24px;"></div>
-        <div class="swatch" data-color="#ffd700" style="background: #ffd700; width:24px; height:24px;"></div>
-        <div class="swatch" data-color="#008000" style="background: #008000; width:24px; height:24px;"></div>
-        <div class="swatch" data-color="#0000ff" style="background: #0000ff; width:24px; height:24px;"></div>
-        <div class="swatch" data-color="#800080" style="background: #800080; width:24px; height:24px;"></div>
-        <div class="swatch" data-color="#ff69b4" style="background: #ff69b4; width:24px; height:24px;"></div>
-        <div class="swatch" data-color="#8b4513" style="background: #8b4513; width:24px; height:24px;"></div>
-        <div class="swatch" data-color="#808080" style="background: #808080; width:24px; height:24px;"></div>
-        <div class="swatch" data-color="#00ffff" style="background: #00ffff; width:24px; height:24px;"></div>
-        <div class="swatch" data-color="#00ff00" style="background: #00ff00; width:24px; height:24px;"></div>
-        <div class="swatch" data-color="#ff00ff" style="background: #ff00ff; width:24px; height:24px;"></div>
-    </div>
-
     <div id="toolbar">
         <div class="tool-tabs">
             <button class="tab-btn active" id="mainBrushBtn"><i class="fas fa-paint-brush"></i></button>
             <button class="tab-btn" data-tool="eraser"><i class="fas fa-eraser"></i></button>
+            
             <button class="tab-btn" id="openColorWheelBtn"><div class="color-ring"></div></button>
+            
             <button class="tab-btn" id="openMenuBtn"><i class="far fa-object-group"></i></button>
         </div>
 
@@ -470,14 +459,15 @@
         <div class="settings-box">
             <div style="display: flex; gap: 15px; align-items: center; width: 100%;">
                 
-                <input type="color" id="colorPicker" value="#000000"> <div class="recent-colors">
-                    <span>COLORS</span>
-                    <div class="swatch-row" id="quickSwatches">
-                        <div class="swatch active-color" data-color="#000000" style="background: #000000;"></div>
-                        <div class="swatch" data-color="#ffffff" style="background: #ffffff;"></div>
-                        <div class="swatch" id="moreColorsBtn" style="background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); display: flex; justify-content: center; align-items: center;">
-                            <i class="fas fa-caret-up" style="font-size: 10px; color: white; text-shadow: 0 0 2px black;"></i>
-                        </div>
+                <input type="color" id="colorPicker" value="#ff0000">
+
+                <div class="recent-colors">
+                    <span>ACTIVE COLOR</span>
+                    <div class="swatch-row">
+                        <div class="swatch active-color" id="currentActiveSwatch" style="background: #ff0000;"></div>
+                        <div class="swatch" style="background: #ffffff;"></div>
+                        <div class="swatch" style="background: #000000;"></div>
+                        <div class="swatch" style="background: #3b82f6;"></div>
                     </div>
                 </div>
             
@@ -584,12 +574,12 @@
         const wCanvas = document.getElementById('uiColorWheelLarge');
         const wCtx = wCanvas.getContext('2d');
         const wheelRadius = wCanvas.width / 2;
-        const ringThickness = 55; 
+        const ringThickness = 55; // Matches the thick donut look from the photo
         const innerRadius = wheelRadius - ringThickness;
 
-        let currentH = 0; 
-        let currentS = 1.0; 
-        let currentL = 0.0; // Default to Black
+        let currentH = 0; // Hue (0 to 1)
+        let currentS = 1.0; // Saturation
+        let currentL = 0.5; // Lightness/Brightness
 
         const imgData = wCtx.createImageData(wCanvas.width, wCanvas.height);
         const data = imgData.data;
@@ -619,6 +609,7 @@
             return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1);
         }
 
+        // Draw ONLY the Hue Ring
         for(let y=0; y<wCanvas.height; y++) {
             for(let x=0; x<wCanvas.width; x++) {
                 let dx = x - wheelRadius;
@@ -626,17 +617,19 @@
                 let dist = Math.sqrt(dx*dx + dy*dy);
                 let idx = (y * wCanvas.width + x) * 4;
                 
+                // If pixel is within the thick ring boundary
                 if(dist <= wheelRadius && dist >= innerRadius) {
                     let angle = Math.atan2(dy, dx);
                     let h = (angle + Math.PI) / (2 * Math.PI); 
                     
+                    // The wheel itself always shows pure hue (S=1.0, L=0.5)
                     let rgb = hslToRgb(h, 1.0, 0.5);
                     data[idx] = rgb[0];
                     data[idx+1] = rgb[1];
                     data[idx+2] = rgb[2];
                     data[idx+3] = 255;
                 } else {
-                    data[idx+3] = 0; 
+                    data[idx+3] = 0; // Transparent center and outside
                 }
             }
         }
@@ -646,9 +639,11 @@
             let rgb = hslToRgb(currentH, currentS, currentL);
             let hex = rgbToHex(rgb[0], rgb[1], rgb[2]);
             
+            // Update preview elements
             document.getElementById('finalColorPreview').style.backgroundColor = hex;
             document.getElementById('wheelThumbLarge').style.backgroundColor = hex;
             
+            // Update Slider Gradients Dynamically
             let hDeg = currentH * 360;
             let sPct = currentS * 100;
             let lPct = currentL * 100;
@@ -656,12 +651,10 @@
             document.getElementById('satSlider').style.background = `linear-gradient(to right, hsl(${hDeg}, 0%, ${lPct}%), hsl(${hDeg}, 100%, ${lPct}%))`;
             document.getElementById('briSlider').style.background = `linear-gradient(to right, hsl(${hDeg}, ${sPct}%, 0%), hsl(${hDeg}, ${sPct}%, 50%), hsl(${hDeg}, ${sPct}%, 100%))`;
 
+            // Sync with actual app drawing tools
             document.getElementById('colorPicker').value = hex;
+            document.getElementById('currentActiveSwatch').style.backgroundColor = hex;
             document.getElementById('colorPicker').dispatchEvent(new Event('input'));
-            
-            // Highlight the menu palette icon dynamically when wheel is used
-            document.querySelectorAll('#quickSwatches .swatch').forEach(s => s.classList.remove('active-color'));
-            document.getElementById('moreColorsBtn').classList.add('active-color');
         }
 
         function handleWheelPick(e) {
@@ -676,9 +669,11 @@
             let dx = x - wheelRadius;
             let dy = y - wheelRadius;
             
+            // Calculate angle for hue
             let angle = Math.atan2(dy, dx);
             currentH = (angle + Math.PI) / (2 * Math.PI);
             
+            // Lock the thumb to the exact middle of the donut ring
             let middleOfRing = wheelRadius - (ringThickness / 2);
             let thumbX = wheelRadius + (Math.cos(angle) * middleOfRing);
             let thumbY = wheelRadius + (Math.sin(angle) * middleOfRing);
@@ -700,6 +695,7 @@
             wCanvas.releasePointerCapture(e.pointerId);
         });
 
+        // Sliders Listeners
         const satSlider = document.getElementById('satSlider');
         const briSlider = document.getElementById('briSlider');
         
@@ -715,6 +711,7 @@
             applyColorUpdate();
         });
 
+        // Reset Buttons Logic
         document.getElementById('resetSatBtn').addEventListener('click', () => {
             currentS = 1.0;
             document.getElementById('satSlider').value = 100;
@@ -723,45 +720,24 @@
         });
 
         document.getElementById('resetBriBtn').addEventListener('click', () => {
-            currentL = 0.0; // Reset to Black
-            document.getElementById('briSlider').value = 0;
-            document.getElementById('briVal').innerText = '0%';
+            currentL = 0.5;
+            document.getElementById('briSlider').value = 50;
+            document.getElementById('briVal').innerText = '50%';
             applyColorUpdate();
         });
 
+        // Initialize slider background gradients on load
         applyColorUpdate();
 
-        // --- NEW SWATCH & COLOR MENU LOGIC ---
-        const moreColorsBtn = document.getElementById('moreColorsBtn');
-        const quickColorMenu = document.getElementById('quickColorMenu');
-        
-        moreColorsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            quickColorMenu.style.display = quickColorMenu.style.display === 'grid' ? 'none' : 'grid';
-        });
-        
-        document.addEventListener('click', (e) => {
-            if(!moreColorsBtn.contains(e.target) && !quickColorMenu.contains(e.target)) {
-                quickColorMenu.style.display = 'none';
-            }
-        });
-
-        // Syncs color picker when any color circle is tapped (main 2 or the 12 inside menu)
-        document.querySelectorAll('.swatch[data-color]').forEach(sw => {
+        // Swatch syncing
+        document.querySelectorAll('.swatch:not(.active-color)').forEach(sw => {
             sw.addEventListener('click', (e) => {
-                let hex = e.target.getAttribute('data-color');
+                let bg = e.target.style.background || e.target.style.backgroundColor;
+                let match = bg.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+                let hex = match ? rgbToHex(parseInt(match[1]), parseInt(match[2]), parseInt(match[3])) : bg;
                 document.getElementById('colorPicker').value = hex;
                 document.getElementById('colorPicker').dispatchEvent(new Event('input'));
-                
-                document.querySelectorAll('#quickSwatches .swatch').forEach(s => s.classList.remove('active-color'));
-                
-                // If the user taps a color inside the 12-color menu, highlight the palette button
-                if (e.target.parentElement.id === 'quickSwatches') {
-                    e.target.classList.add('active-color');
-                } else {
-                    moreColorsBtn.classList.add('active-color');
-                }
-                quickColorMenu.style.display = 'none'; // Close menu on select
+                document.getElementById('currentActiveSwatch').style.backgroundColor = hex;
             });
         });
 
@@ -829,9 +805,11 @@
         const isDrawer = (actualUserId === drawerId || actualUserId === 0); 
         const drawerName = tg.initDataUnsafe?.user?.first_name || 'Player';
 
+        // MAIN CANVAS (Optimized for desynchronized drawing rendering)
         const canvas = document.getElementById('board');
         const ctx = canvas.getContext('2d', { willReadFrequently: true, desynchronized: true });
         
+        // STROKE CANVAS FOR PERFORMANCE OPACITY (Hardware acceleration enabled)
         const strokeCanvas = document.getElementById('strokeBoard');
         const strokeCtx = strokeCanvas.getContext('2d', { desynchronized: true });
 
@@ -843,6 +821,22 @@
         let keepDrawingTimeout;
 
         let syncInterval, livePhotoInterval, updatePhotoInterval;
+
+        // --- GLITCH FIX: RESTORE KEEP DRAWING SESSION MEMORY ---
+        let kdStored = localStorage.getItem(`kd_${chatId}_${startTime}`);
+        if (kdStored === 'true' && isDrawer) {
+            gameIsActive = false; // Bypass the regular game active checks
+            keepDrawing = true;
+            window.finalWord = localStorage.getItem(`kd_word_${chatId}_${startTime}`);
+            window.finalMessageId = localStorage.getItem(`kd_msgId_${chatId}_${startTime}`);
+            
+            document.getElementById('floatingCloseCanvasBtn').style.display = 'flex';
+            document.getElementById('top-bar').style.display = 'none';
+            
+            keepDrawingTimeout = setTimeout(() => {
+                document.getElementById('closeCanvasBtn').click();
+            }, 3600000);
+        }
 
         if (!isDrawer) {
             document.getElementById('top-bar').style.display = 'none';
@@ -914,6 +908,7 @@
             if (tool === 'eraser') document.getElementById('toolSelect').value = 'solid';
         });
 
+        // RESOLUTION (Applies to both layers)
         const dpr = window.devicePixelRatio || 1;
         canvas.width = 800 * dpr;
         canvas.height = 1000 * dpr; 
@@ -991,13 +986,14 @@
             }
         };
         
+        // --- PERFECTED CLEAR CANVAS LOGIC ---
         document.getElementById('clearBtnBottom').onclick = () => { 
             if(gameIsActive || keepDrawing) { 
-                ctx.globalAlpha = 1.0; 
+                ctx.globalAlpha = 1.0; // Hard reset to force complete clear
                 ctx.globalCompositeOperation = 'source-over';
                 ctx.fillStyle = "white"; 
-                ctx.clearRect(0, 0, canvas.width, canvas.height); 
-                ctx.fillRect(0, 0, canvas.width, canvas.height); 
+                ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear
+                ctx.fillRect(0, 0, canvas.width, canvas.height); // Flood white
                 saveState(); 
             }
         };
@@ -1009,47 +1005,35 @@
             return new File([u8arr], filename, {type:mime});
         }
         
-        // --- KEEP DRAWING WITH EXTENDED 1-HOUR TIMEOUT AND FLOATING BUTTON --- 
         document.getElementById('keepDrawingBtn').onclick = () => {
             if (!checkSpam('keep_drawing_btn', 2000)) return; 
             document.getElementById('win-overlay').style.display = 'none';
             keepDrawing = true; 
             
-            // Pop up the floating close canvas button since the main overlay closes
             document.getElementById('floatingCloseCanvasBtn').style.display = 'flex';
             
-            // Allow them to draw for up to 1 Hour (3,600,000 ms) instead of 5 minutes
+            // GLITCH FIX: Save state so if they close and reopen, it remembers perfectly!
+            localStorage.setItem(`kd_${chatId}_${startTime}`, 'true');
+            if (window.finalWord) localStorage.setItem(`kd_word_${chatId}_${startTime}`, window.finalWord);
+            if (window.finalMessageId) localStorage.setItem(`kd_msgId_${chatId}_${startTime}`, window.finalMessageId);
+
             keepDrawingTimeout = setTimeout(() => {
-                keepDrawing = false;
-                stopAllIntervals();
-                document.getElementById('toolbar').style.display = 'none';
-                document.getElementById('floatingCloseCanvasBtn').style.display = 'none';
-                const overlay = document.getElementById('viewer-overlay');
-                overlay.style.display = 'flex';
-                overlay.style.background = '#ff4757';
-                overlay.innerHTML = `<h1 style="margin:0; font-size:50px;">🛑</h1><p>Time's up! Canvas closed.</p>`;
-                
-                if (window.TG_BOT_TOKEN && window.finalMessageId) {
-                    const file = dataURLtoFile(canvas.toDataURL('image/jpeg', 0.8), 'drawing.jpg');
-                    const editData = new FormData();
-                    editData.append('chat_id', chatId);
-                    editData.append('message_id', window.finalMessageId);
-                    editData.append('media', JSON.stringify({
-                        type: 'photo', media: 'attach://drawing', 
-                        caption: `🎨 <b>Final Masterpiece!</b>\nWord was: <b>${window.finalWord}</b>`, 
-                        parse_mode: 'HTML'
-                    }));
-                    editData.append('drawing', file);
-                    fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData});
-                }
-            }, 3600000);
+                document.getElementById('closeCanvasBtn').click();
+            }, 3600000); // Set to 1 Hour (3,600,000)
         };
 
-        // Standard original behavior for closing web app logic. Works seamlessly with the floating button too.
+        // Added logic to click main close button easily from float
+        document.getElementById('floatingCloseCanvasBtn').onclick = () => {
+            document.getElementById('floatingCloseCanvasBtn').style.display = 'none';
+            document.getElementById('closeCanvasBtn').click();
+        };
+
         document.getElementById('closeCanvasBtn').onclick = () => {
             if (!checkSpam('close_canvas_btn', 3000)) return; 
             stopAllIntervals();
             if (evtSource) evtSource.close();
+            
+            localStorage.removeItem(`kd_${chatId}_${startTime}`);
 
             if (window.TG_BOT_TOKEN && window.finalMessageId) {
                 const file = dataURLtoFile(canvas.toDataURL('image/jpeg', 0.8), 'drawing.jpg');
@@ -1069,12 +1053,6 @@
             }
         };
 
-        // Pass the floating button click to the main close function logic
-        document.getElementById('floatingCloseCanvasBtn').onclick = () => {
-            document.getElementById('floatingCloseCanvasBtn').style.display = 'none';
-            document.getElementById('closeCanvasBtn').click();
-        };
-
         const evtSource = new EventSource(`https://ntfy.envs.net/WispDraw_${chatId}_${startTime}/sse`);
         let comments = [];
 
@@ -1085,7 +1063,9 @@
                 const data = parsed.message;
 
                 if (data.startsWith("DEAD|")) {
-                    if (keepDrawing) return; 
+                    // GLITCH FIX: Ignore DEAD if keepDrawing is active, OR game is already won, OR persistent state exists
+                    if (keepDrawing || window.finalWord || localStorage.getItem(`kd_${chatId}_${startTime}`) === 'true') return; 
+
                     gameIsActive = false;
                     keepDrawing = false;
                     stopAllIntervals();
@@ -1136,6 +1116,12 @@
                                 sendData.append('photo', file);
                                 sendData.append('caption', `🎨 <b>Final Masterpiece!</b>\nWord was: <b>${window.finalWord}</b>`);
                                 sendData.append('parse_mode', 'HTML');
+                                
+                                // Keep the button active so they can rejoin their Keep Drawing session if they close it
+                                sendData.append('reply_markup', JSON.stringify({
+                                    inline_keyboard: [[{text: "🎨 Open Canvas", url: `https://t.me/Drawinggamebot/DRAWING?startapp=${chatId}_${drawerId}_${startTime}_${mainMsgId}` }]]
+                                }));
+
                                 fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/sendPhoto`, { method: 'POST', body: sendData })
                                 .then(r => r.json())
                                 .then(res => {
@@ -1200,7 +1186,7 @@
         if (!isDrawer) {
             client.on('message', (topic, message) => {
                 let img = new Image(); 
-                img.decoding = "async"; 
+                img.decoding = "async"; // Non-blocking decode for perfectly smooth viewing
                 img.onload = () => { 
                     ctx.globalAlpha = 1.0;
                     ctx.clearRect(0, 0, canvas.width, canvas.height); 
@@ -1214,12 +1200,14 @@
             initDrawing();
             initZoom();
             
+            // --- OPTIMIZED MQTT SYNC LOGIC ---
             let lastMqttCanvasData = ""; 
             syncInterval = setInterval(() => {
                 if (client.connected && (gameIsActive || keepDrawing)) {
+                    // Lowered quality to 0.35 to save bandwidth and prevent main-thread lag when encoding
                     const currentData = canvas.toDataURL('image/jpeg', 0.35); 
                     if (currentData !== lastMqttCanvasData) {
-                        client.publish(syncTopic, currentData, { qos: 0 }); 
+                        client.publish(syncTopic, currentData, { qos: 0 }); // QoS 0 for fast real-time drops
                         lastMqttCanvasData = currentData;
                     }
                 }
@@ -1257,7 +1245,7 @@
                 }).catch(()=>{});
             }
 
-            if (!lastSentPhotoId) {
+            if (!lastSentPhotoId && gameIsActive) {
                 sendLivePhoto('initial');
             }
             
@@ -1265,6 +1253,7 @@
                 if (gameIsActive && lastSentPhotoId) sendLivePhoto('update'); 
             }, 60000);
 
+            // --- SECURE TELEGRAM API UPDATE LOGIC ---
             let lastCanvasData = ""; 
             let isSyncing = false; 
             let rateLimitPauseUntil = 0; 
@@ -1274,12 +1263,13 @@
                 if (!gameIsActive && !keepDrawing) return; 
                 if (!window.TG_BOT_TOKEN) return;
                 
+                // Prevent overlapping uploads and respect Telegram's timeout
                 if (isSyncing || Date.now() < rateLimitPauseUntil) return;
 
                 const currentData = canvas.toDataURL('image/jpeg', 0.8);
                 if (currentData === lastCanvasData) return; 
                 
-                isSyncing = true; 
+                isSyncing = true; // Lock
                 lastUpdateTimestamp = Date.now();
 
                 try {
@@ -1310,6 +1300,7 @@
                                     lastCanvasData = ""; 
                                 } else if (res.error_code === 429) {
                                     lastCanvasData = "";
+                                    // Respect Telegram's exact timeout requirement
                                     const waitSeconds = res.parameters?.retry_after || 30;
                                     rateLimitPauseUntil = Date.now() + (waitSeconds * 1000);
                                 }
@@ -1331,6 +1322,10 @@
                         }));
                         editData.append('drawing', file);
                         
+                        editData.append('reply_markup', JSON.stringify({
+                            inline_keyboard: [[{text: "🎨 Open Canvas", url: `https://t.me/Drawinggamebot/DRAWING?startapp=${chatId}_${drawerId}_${startTime}_${mainMsgId}` }]]
+                        }));
+
                         const response = await fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData});
                         const res = await response.json();
                         
@@ -1345,9 +1340,10 @@
                         }
                     }
                 } catch (err) {
+                    // Network error, allow retry next cycle
                     lastCanvasData = "";
                 } finally {
-                    isSyncing = false; 
+                    isSyncing = false; // Unlock
                 }
             }
 
@@ -1355,6 +1351,7 @@
 
             document.addEventListener("visibilitychange", () => {
                 if (document.visibilityState === 'visible') {
+                    // Cooldown: Only trigger on visibility change if at least 15 seconds have passed since the last update
                     if (Date.now() - lastUpdateTimestamp > 15000) {
                         updateTelegramCanvas(); 
                     }
@@ -1471,6 +1468,7 @@
                 let tool = document.getElementById('toolSelect').value;
                 let baseAlpha = document.getElementById('visualOpacity').value / 100;
 
+                // FIX: Bypass Fill operation on pointerdown to prevent freeze when trying to zoom.
                 if (tool === 'fill') {
                     drawing = true;
                     return; 
@@ -1527,6 +1525,7 @@
                 let color = tool === 'eraser' ? 'white' : document.getElementById('colorPicker').value;
                 let size = document.getElementById('brushSize').value * dpr;
 
+                // FIX: If the user drags significantly while "Fill" is active, cancel it so they can pan/zoom smoothly.
                 if (tool === 'fill') {
                     const currentX = (e.clientX - rect.left) * (canvas.width / rect.width);
                     const currentY = (e.clientY - rect.top) * (canvas.height / rect.height);
@@ -1564,6 +1563,7 @@
                         const midX = (lastX + currentX) / 2;
                         const midY = (lastY + currentY) / 2;
                         
+                        // Outer wet edge
                         strokeCtx.lineWidth = size * 1.4;
                         strokeCtx.globalAlpha = 0.02;
                         strokeCtx.beginPath();
@@ -1571,6 +1571,7 @@
                         strokeCtx.quadraticCurveTo(lastX, lastY, midX, midY);
                         strokeCtx.stroke(); 
                         
+                        // Inner core
                         strokeCtx.lineWidth = size * 0.7;
                         strokeCtx.globalAlpha = 0.05;
                         strokeCtx.stroke(); 
@@ -1618,6 +1619,7 @@
                     let tool = document.getElementById('toolSelect').value;
                     let baseAlpha = document.getElementById('visualOpacity').value / 100;
                     
+                    // FIX: Execute Fill on pointer release, perfectly clamped.
                     if (tool === 'fill') {
                         let sx = Math.max(0, Math.min(canvas.width - 1, Math.round(startX)));
                         let sy = Math.max(0, Math.min(canvas.height - 1, Math.round(startY)));
