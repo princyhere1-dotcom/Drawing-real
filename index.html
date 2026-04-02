@@ -127,8 +127,11 @@
         #floatingCloseCanvasBtn {
             top: 15px; left: 15px;
             padding: 6px 12px; gap: 6px;
-            background: #e74c3c; color: white; border: none; z-index: 30;
+            background: #e74c3c; color: white; border: none; z-index: 50;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+            transition: 0.2s;
         }
+        #floatingCloseCanvasBtn:active { transform: scale(0.95); }
         
         /* Bottom Control Panel */
         #toolbar { 
@@ -229,10 +232,9 @@
             border: 4px solid #ffffff; background: #ff0000;
             box-shadow: 0 0 10px rgba(0,0,0,0.6);
             transform: translate(-50%, -50%); pointer-events: none;
-            top: 50%; left: 100%; /* Default right side */
+            top: 50%; left: 100%; 
         }
         
-        /* New Color Preview & Dynamic Sliders */
         .color-preview-box {
             display: flex; align-items: center; gap: 15px; width: 100%; justify-content: center;
             padding: 5px 0 15px 0; border-bottom: 1px solid var(--panel-border);
@@ -250,7 +252,6 @@
         .color-slider-row input[type="range"] {
             flex: 1; height: 8px; border-radius: 4px;
             -webkit-appearance: none; outline: none;
-            /* Background dynamically updated via JS */
         }
         .color-slider-row input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
@@ -270,12 +271,19 @@
             display: flex; align-items: center; gap: 10px;
         }
         
-        .recent-colors { display: flex; flex-direction: column; gap: 5px; margin-right: 5px; }
-        .recent-colors span { font-size: 8px; font-weight: 700; color: var(--text-muted); letter-spacing: 1px; }
+        .recent-colors { display: flex; flex-direction: column; gap: 5px; margin-right: 5px; position: relative; }
+        .recent-colors > span { font-size: 8px; font-weight: 700; color: var(--text-muted); letter-spacing: 1px; }
         .swatch-row { display: flex; gap: 6px; align-items: center; }
         .swatch { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: 0.1s;}
         .swatch:active { transform: scale(0.9); }
         .swatch.active-color { border: 2px solid var(--purple-primary); box-shadow: 0 0 8px var(--purple-glow); width: 20px; height: 20px; pointer-events: none;}
+        
+        #recentColorsPopup {
+            position: absolute; bottom: 40px; left: 0; background: var(--panel-bg); 
+            border: 1px solid var(--panel-border); border-radius: 12px; padding: 10px; 
+            display: flex; gap: 8px; flex-wrap: wrap; width: 140px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7); z-index: 100;
+        }
 
         .sliders { flex: 1; display: flex; flex-direction: column; gap: 10px; padding-left: 10px; border-left: 1px solid var(--panel-border); }
         .slider-row { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 11px;}
@@ -396,8 +404,7 @@
         <p id="win-text" style="font-size: 28px; margin: 20px 0; font-weight: bold; line-height: 1.4; text-shadow: 0 2px 4px rgba(0,0,0,0.2);"></p>
         <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
             <button id="keepDrawingBtn" class="win-btn" style="background: white; color: var(--purple-primary);">Keep drawing</button>
-            <button id="closeCanvasBtn" class="win-btn" style="background: #e74c3c; color: white;">Close Canvas</button>
-        </div>
+            <button id="closeCanvasBtn" class="win-btn" style="background: #e74c3c; color: white; display: none;">Close Canvas</button> </div>
     </div>
 
     <div id="app-body">
@@ -436,12 +443,17 @@
     <div id="toolbar">
         <div class="tool-tabs">
             <button class="tab-btn active" id="mainBrushBtn"><i class="fas fa-paint-brush"></i></button>
+            
+            <div id="sizeDragDotContainer" style="width: 24px; height: 100%; display: flex; align-items: center; justify-content: center; cursor: ns-resize; touch-action: none; position: relative; z-index: 60;">
+                <div id="sizeDragDot" style="width: 14px; height: 14px; background: #000; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.5); transition: transform 0.1s;"></div>
+            </div>
+            
             <button class="tab-btn" data-tool="eraser"><i class="fas fa-eraser"></i></button>
-            
             <button class="tab-btn" id="openColorWheelBtn"><div class="color-ring"></div></button>
-            
             <button class="tab-btn" id="openMenuBtn"><i class="far fa-object-group"></i></button>
         </div>
+        
+        <div id="sizeDragTooltip" style="display:none; position:absolute; top:-35px; left: 45px; background:rgba(124, 58, 237, 0.95); color:#fff; padding:6px 12px; border-radius:10px; font-size:13px; font-weight:bold; z-index:100; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">12px</div>
 
         <select id="toolSelect">
             <option value="solid" selected>🖌️ Solid Brush</option>
@@ -459,16 +471,17 @@
         <div class="settings-box">
             <div style="display: flex; gap: 15px; align-items: center; width: 100%;">
                 
-                <input type="color" id="colorPicker" value="#ff0000">
+                <input type="color" id="colorPicker" value="#000000">
 
                 <div class="recent-colors">
                     <span>ACTIVE COLOR</span>
                     <div class="swatch-row">
-                        <div class="swatch active-color" id="currentActiveSwatch" style="background: #ff0000;"></div>
-                        <div class="swatch" style="background: #ffffff;"></div>
-                        <div class="swatch" style="background: #000000;"></div>
-                        <div class="swatch" style="background: #3b82f6;"></div>
+                        <div class="swatch active-color" id="swatchBlack" style="background: #000000;"></div>
+                        <div class="swatch" id="swatchWhite" style="background: #ffffff;"></div>
+                        <div class="swatch recent-toggle" id="recentToggleBtn" style="background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); display:flex; justify-content:center; align-items:center; border:none;"><i class="fas fa-history" style="font-size:10px;color:white;text-shadow:0 1px 2px rgba(0,0,0,0.8);"></i></div>
                     </div>
+                    
+                    <div id="recentColorsPopup" style="display: none;"></div>
                 </div>
             
                 <div class="sliders">
@@ -574,12 +587,12 @@
         const wCanvas = document.getElementById('uiColorWheelLarge');
         const wCtx = wCanvas.getContext('2d');
         const wheelRadius = wCanvas.width / 2;
-        const ringThickness = 55; // Matches the thick donut look from the photo
+        const ringThickness = 55;
         const innerRadius = wheelRadius - ringThickness;
 
-        let currentH = 0; // Hue (0 to 1)
-        let currentS = 1.0; // Saturation
-        let currentL = 0.5; // Lightness/Brightness
+        let currentH = 0; 
+        let currentS = 0; // Default black
+        let currentL = 0; // Default black
 
         const imgData = wCtx.createImageData(wCanvas.width, wCanvas.height);
         const data = imgData.data;
@@ -609,27 +622,22 @@
             return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1);
         }
 
-        // Draw ONLY the Hue Ring
         for(let y=0; y<wCanvas.height; y++) {
             for(let x=0; x<wCanvas.width; x++) {
                 let dx = x - wheelRadius;
                 let dy = y - wheelRadius;
                 let dist = Math.sqrt(dx*dx + dy*dy);
                 let idx = (y * wCanvas.width + x) * 4;
-                
-                // If pixel is within the thick ring boundary
                 if(dist <= wheelRadius && dist >= innerRadius) {
                     let angle = Math.atan2(dy, dx);
                     let h = (angle + Math.PI) / (2 * Math.PI); 
-                    
-                    // The wheel itself always shows pure hue (S=1.0, L=0.5)
                     let rgb = hslToRgb(h, 1.0, 0.5);
                     data[idx] = rgb[0];
                     data[idx+1] = rgb[1];
                     data[idx+2] = rgb[2];
                     data[idx+3] = 255;
                 } else {
-                    data[idx+3] = 0; // Transparent center and outside
+                    data[idx+3] = 0; 
                 }
             }
         }
@@ -639,11 +647,9 @@
             let rgb = hslToRgb(currentH, currentS, currentL);
             let hex = rgbToHex(rgb[0], rgb[1], rgb[2]);
             
-            // Update preview elements
             document.getElementById('finalColorPreview').style.backgroundColor = hex;
             document.getElementById('wheelThumbLarge').style.backgroundColor = hex;
             
-            // Update Slider Gradients Dynamically
             let hDeg = currentH * 360;
             let sPct = currentS * 100;
             let lPct = currentL * 100;
@@ -651,10 +657,8 @@
             document.getElementById('satSlider').style.background = `linear-gradient(to right, hsl(${hDeg}, 0%, ${lPct}%), hsl(${hDeg}, 100%, ${lPct}%))`;
             document.getElementById('briSlider').style.background = `linear-gradient(to right, hsl(${hDeg}, ${sPct}%, 0%), hsl(${hDeg}, ${sPct}%, 50%), hsl(${hDeg}, ${sPct}%, 100%))`;
 
-            // Sync with actual app drawing tools
             document.getElementById('colorPicker').value = hex;
-            document.getElementById('currentActiveSwatch').style.backgroundColor = hex;
-            document.getElementById('colorPicker').dispatchEvent(new Event('input'));
+            document.getElementById('colorPicker').dispatchEvent(new Event('change')); // Trigger visual update
         }
 
         function handleWheelPick(e) {
@@ -669,11 +673,9 @@
             let dx = x - wheelRadius;
             let dy = y - wheelRadius;
             
-            // Calculate angle for hue
             let angle = Math.atan2(dy, dx);
             currentH = (angle + Math.PI) / (2 * Math.PI);
             
-            // Lock the thumb to the exact middle of the donut ring
             let middleOfRing = wheelRadius - (ringThickness / 2);
             let thumbX = wheelRadius + (Math.cos(angle) * middleOfRing);
             let thumbY = wheelRadius + (Math.sin(angle) * middleOfRing);
@@ -695,7 +697,6 @@
             wCanvas.releasePointerCapture(e.pointerId);
         });
 
-        // Sliders Listeners
         const satSlider = document.getElementById('satSlider');
         const briSlider = document.getElementById('briSlider');
         
@@ -711,7 +712,6 @@
             applyColorUpdate();
         });
 
-        // Reset Buttons Logic
         document.getElementById('resetSatBtn').addEventListener('click', () => {
             currentS = 1.0;
             document.getElementById('satSlider').value = 100;
@@ -726,24 +726,105 @@
             applyColorUpdate();
         });
 
-        // Initialize slider background gradients on load
+        // Initialize wheel visually
         applyColorUpdate();
 
-        // Swatch syncing
-        document.querySelectorAll('.swatch:not(.active-color)').forEach(sw => {
-            sw.addEventListener('click', (e) => {
-                let bg = e.target.style.background || e.target.style.backgroundColor;
-                let match = bg.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
-                let hex = match ? rgbToHex(parseInt(match[1]), parseInt(match[2]), parseInt(match[3])) : bg;
-                document.getElementById('colorPicker').value = hex;
-                document.getElementById('colorPicker').dispatchEvent(new Event('input'));
-                document.getElementById('currentActiveSwatch').style.backgroundColor = hex;
-            });
+        // --- RECENT COLORS LOGIC ---
+        let recentColors = ["#000000", "#ffffff"]; 
+        const recentToggleBtn = document.getElementById('recentToggleBtn');
+        const recentColorsPopup = document.getElementById('recentColorsPopup');
+
+        recentToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            recentColorsPopup.style.display = recentColorsPopup.style.display === 'none' ? 'flex' : 'none';
+            renderRecentColors();
         });
 
-        // --- MISC ---
+        document.addEventListener('click', (e) => {
+            if(!recentColorsPopup.contains(e.target) && !recentToggleBtn.contains(e.target)) {
+                recentColorsPopup.style.display = 'none';
+            }
+        });
+
+        function renderRecentColors() {
+            recentColorsPopup.innerHTML = '';
+            recentColors.forEach(color => {
+                let swatch = document.createElement('div');
+                swatch.className = 'swatch';
+                swatch.style.backgroundColor = color;
+                swatch.onclick = () => {
+                    document.getElementById('colorPicker').value = color;
+                    updateActiveSwatchVisuals(color);
+                };
+                recentColorsPopup.appendChild(swatch);
+            });
+        }
+
+        function addColorToRecent(color) {
+            recentColors = recentColors.filter(c => c !== color);
+            recentColors.unshift(color);
+            if(recentColors.length > 10) recentColors.pop();
+            renderRecentColors();
+        }
+
+        function updateActiveSwatchVisuals(hex) {
+            document.querySelectorAll('.swatch-row .swatch:not(.recent-toggle)').forEach(s => s.classList.remove('active-color'));
+            if(hex === '#000000') document.getElementById('swatchBlack').classList.add('active-color');
+            else if(hex === '#ffffff') document.getElementById('swatchWhite').classList.add('active-color');
+            
+            addColorToRecent(hex);
+        }
+
+        document.getElementById('swatchBlack').addEventListener('click', () => {
+            document.getElementById('colorPicker').value = '#000000';
+            updateActiveSwatchVisuals('#000000');
+        });
+        document.getElementById('swatchWhite').addEventListener('click', () => {
+            document.getElementById('colorPicker').value = '#ffffff';
+            updateActiveSwatchVisuals('#ffffff');
+        });
+
+        document.getElementById('colorPicker').addEventListener('change', (e) => {
+            updateActiveSwatchVisuals(e.target.value);
+        });
+
+        // --- BRUSH DRAG SLIDER LOGIC ---
+        const sizeDotContainer = document.getElementById('sizeDragDotContainer');
+        const sizeDotVisual = document.getElementById('sizeDragDot');
+        const sizeTooltip = document.getElementById('sizeDragTooltip');
         const sizeSlider = document.getElementById('brushSize');
         const sizeVal = document.getElementById('brushSizeVal');
+        let isDraggingSize = false;
+        let startYDrag = 0;
+        let startSizeVal = 0;
+
+        sizeDotContainer.addEventListener('pointerdown', (e) => {
+            isDraggingSize = true;
+            startYDrag = e.clientY;
+            startSizeVal = parseInt(sizeSlider.value);
+            sizeTooltip.style.display = 'block';
+            sizeTooltip.textContent = startSizeVal + 'px';
+            sizeDotVisual.style.transform = 'scale(1.4)';
+            e.target.setPointerCapture(e.pointerId);
+        });
+
+        sizeDotContainer.addEventListener('pointermove', (e) => {
+            if(!isDraggingSize) return;
+            let deltaY = startYDrag - e.clientY;
+            let newSize = Math.max(1, Math.min(50, Math.round(startSizeVal + (deltaY / 2))));
+            sizeSlider.value = newSize;
+            sizeVal.textContent = newSize + 'px';
+            sizeTooltip.textContent = newSize + 'px';
+        });
+
+        sizeDotContainer.addEventListener('pointerup', (e) => {
+            isDraggingSize = false;
+            sizeTooltip.style.display = 'none';
+            sizeDotVisual.style.transform = 'scale(1)';
+            e.target.releasePointerCapture(e.pointerId);
+        });
+
+        // Misc standard slider updates
         sizeSlider.addEventListener('input', (e) => {
             sizeVal.textContent = e.target.value + 'px';
         });
@@ -805,11 +886,11 @@
         const isDrawer = (actualUserId === drawerId || actualUserId === 0); 
         const drawerName = tg.initDataUnsafe?.user?.first_name || 'Player';
 
-        // MAIN CANVAS (Optimized for desynchronized drawing rendering)
+        // MAIN CANVAS
         const canvas = document.getElementById('board');
         const ctx = canvas.getContext('2d', { willReadFrequently: true, desynchronized: true });
         
-        // STROKE CANVAS FOR PERFORMANCE OPACITY (Hardware acceleration enabled)
+        // STROKE CANVAS (Hardware accelerated)
         const strokeCanvas = document.getElementById('strokeBoard');
         const strokeCtx = strokeCanvas.getContext('2d', { desynchronized: true });
 
@@ -819,13 +900,14 @@
         let gameIsActive = true;
         let keepDrawing = false; 
         let keepDrawingTimeout;
+        let isSyncing = false; // Lock for network saving
 
         let syncInterval, livePhotoInterval, updatePhotoInterval;
 
-        // --- GLITCH FIX: RESTORE KEEP DRAWING SESSION MEMORY ---
+        // GLITCH FIX: RESTORE KEEP DRAWING SESSION MEMORY
         let kdStored = localStorage.getItem(`kd_${chatId}_${startTime}`);
         if (kdStored === 'true' && isDrawer) {
-            gameIsActive = false; // Bypass the regular game active checks
+            gameIsActive = false;
             keepDrawing = true;
             window.finalWord = localStorage.getItem(`kd_word_${chatId}_${startTime}`);
             window.finalMessageId = localStorage.getItem(`kd_msgId_${chatId}_${startTime}`);
@@ -908,8 +990,8 @@
             if (tool === 'eraser') document.getElementById('toolSelect').value = 'solid';
         });
 
-        // RESOLUTION (Applies to both layers)
-        const dpr = window.devicePixelRatio || 1;
+        // RESOLUTION (Capped DPR to fix the main thread stuttering limit)
+        const dpr = Math.min(window.devicePixelRatio || 1, 1.5); 
         canvas.width = 800 * dpr;
         canvas.height = 1000 * dpr; 
         canvas.style.width = '100%';
@@ -986,14 +1068,13 @@
             }
         };
         
-        // --- PERFECTED CLEAR CANVAS LOGIC ---
         document.getElementById('clearBtnBottom').onclick = () => { 
             if(gameIsActive || keepDrawing) { 
-                ctx.globalAlpha = 1.0; // Hard reset to force complete clear
+                ctx.globalAlpha = 1.0; 
                 ctx.globalCompositeOperation = 'source-over';
                 ctx.fillStyle = "white"; 
-                ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear
-                ctx.fillRect(0, 0, canvas.width, canvas.height); // Flood white
+                ctx.clearRect(0, 0, canvas.width, canvas.height); 
+                ctx.fillRect(0, 0, canvas.width, canvas.height); 
                 saveState(); 
             }
         };
@@ -1012,45 +1093,49 @@
             
             document.getElementById('floatingCloseCanvasBtn').style.display = 'flex';
             
-            // GLITCH FIX: Save state so if they close and reopen, it remembers perfectly!
             localStorage.setItem(`kd_${chatId}_${startTime}`, 'true');
             if (window.finalWord) localStorage.setItem(`kd_word_${chatId}_${startTime}`, window.finalWord);
             if (window.finalMessageId) localStorage.setItem(`kd_msgId_${chatId}_${startTime}`, window.finalMessageId);
 
             keepDrawingTimeout = setTimeout(() => {
                 document.getElementById('closeCanvasBtn').click();
-            }, 3600000); // Set to 1 Hour (3,600,000)
+            }, 3600000); 
         };
 
-        // Added logic to click main close button easily from float
-        document.getElementById('floatingCloseCanvasBtn').onclick = () => {
-            document.getElementById('floatingCloseCanvasBtn').style.display = 'none';
-            document.getElementById('closeCanvasBtn').click();
+        // EXPLICIT CLOSE CANVAS BUTTON - Guarantees 100% update to final masterpiece
+        document.getElementById('floatingCloseCanvasBtn').onclick = async () => {
+            document.getElementById('floatingCloseCanvasBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            document.getElementById('floatingCloseCanvasBtn').style.pointerEvents = 'none';
+            
+            if (window.TG_BOT_TOKEN && window.finalMessageId) {
+                try {
+                    const currentData = canvas.toDataURL('image/jpeg', 0.9); // High quality final render
+                    const file = dataURLtoFile(currentData, 'drawing.jpg');
+                    const editData = new FormData();
+                    editData.append('chat_id', chatId);
+                    editData.append('message_id', window.finalMessageId);
+                    editData.append('media', JSON.stringify({
+                        type: 'photo', media: 'attach://drawing', 
+                        caption: `🎨 <b>Final Masterpiece!</b>\nWord was: <b>${window.finalWord}</b>`, 
+                        parse_mode: 'HTML'
+                    }));
+                    editData.append('drawing', file);
+                    await fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData});
+                } catch(err) {
+                    console.log(err);
+                }
+            }
+            
+            document.getElementById('closeCanvasBtn').click(); // trigger final close logic
         };
 
+        // Internal silent close event triggered after save or timeout
         document.getElementById('closeCanvasBtn').onclick = () => {
             if (!checkSpam('close_canvas_btn', 3000)) return; 
             stopAllIntervals();
             if (evtSource) evtSource.close();
-            
             localStorage.removeItem(`kd_${chatId}_${startTime}`);
-
-            if (window.TG_BOT_TOKEN && window.finalMessageId) {
-                const file = dataURLtoFile(canvas.toDataURL('image/jpeg', 0.8), 'drawing.jpg');
-                const editData = new FormData();
-                editData.append('chat_id', chatId);
-                editData.append('message_id', window.finalMessageId);
-                editData.append('media', JSON.stringify({
-                    type: 'photo', media: 'attach://drawing', 
-                    caption: `🎨 <b>Final Masterpiece!</b>\nWord was: <b>${window.finalWord}</b>`, 
-                    parse_mode: 'HTML'
-                }));
-                editData.append('drawing', file);
-                fetch(`https://api.telegram.org/bot${window.TG_BOT_TOKEN}/editMessageMedia`, {method: 'POST', body: editData})
-                .then(() => tg.close()).catch(() => tg.close());
-            } else {
-                tg.close();
-            }
+            tg.close();
         };
 
         const evtSource = new EventSource(`https://ntfy.envs.net/WispDraw_${chatId}_${startTime}/sse`);
@@ -1063,7 +1148,6 @@
                 const data = parsed.message;
 
                 if (data.startsWith("DEAD|")) {
-                    // GLITCH FIX: Ignore DEAD if keepDrawing is active, OR game is already won, OR persistent state exists
                     if (keepDrawing || window.finalWord || localStorage.getItem(`kd_${chatId}_${startTime}`) === 'true') return; 
 
                     gameIsActive = false;
@@ -1117,7 +1201,6 @@
                                 sendData.append('caption', `🎨 <b>Final Masterpiece!</b>\nWord was: <b>${window.finalWord}</b>`);
                                 sendData.append('parse_mode', 'HTML');
                                 
-                                // Keep the button active so they can rejoin their Keep Drawing session if they close it
                                 sendData.append('reply_markup', JSON.stringify({
                                     inline_keyboard: [[{text: "🎨 Open Canvas", url: `https://t.me/Drawinggamebot/DRAWING?startapp=${chatId}_${drawerId}_${startTime}_${mainMsgId}` }]]
                                 }));
@@ -1186,7 +1269,7 @@
         if (!isDrawer) {
             client.on('message', (topic, message) => {
                 let img = new Image(); 
-                img.decoding = "async"; // Non-blocking decode for perfectly smooth viewing
+                img.decoding = "async"; 
                 img.onload = () => { 
                     ctx.globalAlpha = 1.0;
                     ctx.clearRect(0, 0, canvas.width, canvas.height); 
@@ -1200,14 +1283,12 @@
             initDrawing();
             initZoom();
             
-            // --- OPTIMIZED MQTT SYNC LOGIC ---
             let lastMqttCanvasData = ""; 
             syncInterval = setInterval(() => {
                 if (client.connected && (gameIsActive || keepDrawing)) {
-                    // Lowered quality to 0.35 to save bandwidth and prevent main-thread lag when encoding
                     const currentData = canvas.toDataURL('image/jpeg', 0.35); 
                     if (currentData !== lastMqttCanvasData) {
-                        client.publish(syncTopic, currentData, { qos: 0 }); // QoS 0 for fast real-time drops
+                        client.publish(syncTopic, currentData, { qos: 0 }); 
                         lastMqttCanvasData = currentData;
                     }
                 }
@@ -1253,23 +1334,19 @@
                 if (gameIsActive && lastSentPhotoId) sendLivePhoto('update'); 
             }, 60000);
 
-            // --- SECURE TELEGRAM API UPDATE LOGIC ---
             let lastCanvasData = ""; 
-            let isSyncing = false; 
             let rateLimitPauseUntil = 0; 
             let lastUpdateTimestamp = 0;
             
             async function updateTelegramCanvas() {
                 if (!gameIsActive && !keepDrawing) return; 
                 if (!window.TG_BOT_TOKEN) return;
-                
-                // Prevent overlapping uploads and respect Telegram's timeout
                 if (isSyncing || Date.now() < rateLimitPauseUntil) return;
 
                 const currentData = canvas.toDataURL('image/jpeg', 0.8);
                 if (currentData === lastCanvasData) return; 
                 
-                isSyncing = true; // Lock
+                isSyncing = true; 
                 lastUpdateTimestamp = Date.now();
 
                 try {
@@ -1300,7 +1377,6 @@
                                     lastCanvasData = ""; 
                                 } else if (res.error_code === 429) {
                                     lastCanvasData = "";
-                                    // Respect Telegram's exact timeout requirement
                                     const waitSeconds = res.parameters?.retry_after || 30;
                                     rateLimitPauseUntil = Date.now() + (waitSeconds * 1000);
                                 }
@@ -1340,10 +1416,9 @@
                         }
                     }
                 } catch (err) {
-                    // Network error, allow retry next cycle
                     lastCanvasData = "";
                 } finally {
-                    isSyncing = false; // Unlock
+                    isSyncing = false; 
                 }
             }
 
@@ -1351,7 +1426,6 @@
 
             document.addEventListener("visibilitychange", () => {
                 if (document.visibilityState === 'visible') {
-                    // Cooldown: Only trigger on visibility change if at least 15 seconds have passed since the last update
                     if (Date.now() - lastUpdateTimestamp > 15000) {
                         updateTelegramCanvas(); 
                     }
@@ -1468,7 +1542,6 @@
                 let tool = document.getElementById('toolSelect').value;
                 let baseAlpha = document.getElementById('visualOpacity').value / 100;
 
-                // FIX: Bypass Fill operation on pointerdown to prevent freeze when trying to zoom.
                 if (tool === 'fill') {
                     drawing = true;
                     return; 
@@ -1525,7 +1598,6 @@
                 let color = tool === 'eraser' ? 'white' : document.getElementById('colorPicker').value;
                 let size = document.getElementById('brushSize').value * dpr;
 
-                // FIX: If the user drags significantly while "Fill" is active, cancel it so they can pan/zoom smoothly.
                 if (tool === 'fill') {
                     const currentX = (e.clientX - rect.left) * (canvas.width / rect.width);
                     const currentY = (e.clientY - rect.top) * (canvas.height / rect.height);
@@ -1563,7 +1635,6 @@
                         const midX = (lastX + currentX) / 2;
                         const midY = (lastY + currentY) / 2;
                         
-                        // Outer wet edge
                         strokeCtx.lineWidth = size * 1.4;
                         strokeCtx.globalAlpha = 0.02;
                         strokeCtx.beginPath();
@@ -1571,13 +1642,30 @@
                         strokeCtx.quadraticCurveTo(lastX, lastY, midX, midY);
                         strokeCtx.stroke(); 
                         
-                        // Inner core
                         strokeCtx.lineWidth = size * 0.7;
                         strokeCtx.globalAlpha = 0.05;
                         strokeCtx.stroke(); 
                         
                         prevMidX = midX; prevMidY = midY; lastX = currentX; lastY = currentY;
-                    } else if (['solid', 'airbrush', 'eraser', 'smooth'].includes(tool)) {
+                    } else if (tool === 'airbrush') {
+                        const midX = (lastX + currentX) / 2;
+                        const midY = (lastY + currentY) / 2;
+                        
+                        // Hardware-accelerated multi-pass airbrush
+                        strokeCtx.globalAlpha = 0.05;
+                        strokeCtx.beginPath();
+                        strokeCtx.moveTo(prevMidX, prevMidY);
+                        strokeCtx.quadraticCurveTo(lastX, lastY, midX, midY);
+                        for(let i=1; i<=3; i++) {
+                            strokeCtx.lineWidth = size * (1 + (i*0.8));
+                            strokeCtx.stroke();
+                        }
+                        strokeCtx.lineWidth = size;
+                        strokeCtx.globalAlpha = 0.5;
+                        strokeCtx.stroke();
+                        
+                        prevMidX = midX; prevMidY = midY; lastX = currentX; lastY = currentY;
+                    } else if (['solid', 'eraser', 'smooth'].includes(tool)) {
                         const midX = (lastX + currentX) / 2;
                         const midY = (lastY + currentY) / 2;
                         
@@ -1587,14 +1675,9 @@
                         strokeCtx.beginPath();
                         strokeCtx.moveTo(prevMidX, prevMidY);
                         strokeCtx.quadraticCurveTo(lastX, lastY, midX, midY);
-                        
-                        if(tool === 'airbrush') { strokeCtx.shadowBlur = size * 2; strokeCtx.shadowColor = color; }
                         strokeCtx.stroke(); 
                         
-                        prevMidX = midX;
-                        prevMidY = midY;
-                        lastX = currentX;
-                        lastY = currentY;
+                        prevMidX = midX; prevMidY = midY; lastX = currentX; lastY = currentY;
                     }
                 }
                 
@@ -1619,7 +1702,6 @@
                     let tool = document.getElementById('toolSelect').value;
                     let baseAlpha = document.getElementById('visualOpacity').value / 100;
                     
-                    // FIX: Execute Fill on pointer release, perfectly clamped.
                     if (tool === 'fill') {
                         let sx = Math.max(0, Math.min(canvas.width - 1, Math.round(startX)));
                         let sy = Math.max(0, Math.min(canvas.height - 1, Math.round(startY)));
