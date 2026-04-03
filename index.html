@@ -591,8 +591,8 @@
         const innerRadius = wheelRadius - ringThickness;
 
         let currentH = 0; 
-        let currentS = 0; // Default black
-        let currentL = 0; // Default black
+        let currentS = 1.0; // Default Red
+        let currentL = 0.5; // Default Red
 
         const imgData = wCtx.createImageData(wCanvas.width, wCanvas.height);
         const data = imgData.data;
@@ -676,6 +676,14 @@
             let angle = Math.atan2(dy, dx);
             currentH = (angle + Math.PI) / (2 * Math.PI);
             
+            // Auto reset sliders to give pure color
+            currentS = 1.0;
+            currentL = 0.5;
+            document.getElementById('satSlider').value = 100;
+            document.getElementById('satVal').innerText = '100%';
+            document.getElementById('briSlider').value = 50;
+            document.getElementById('briVal').innerText = '50%';
+
             let middleOfRing = wheelRadius - (ringThickness / 2);
             let thumbX = wheelRadius + (Math.cos(angle) * middleOfRing);
             let thumbY = wheelRadius + (Math.sin(angle) * middleOfRing);
